@@ -24,6 +24,7 @@ def moebius(n):
         moebius(n) == 0 otherswise.
     """
     # FixMe: memoize
+
     assert n > 0
     if n == 1:
         return 1
@@ -39,6 +40,7 @@ def Z(n):
         Z(n) == #{m <= n: moebius(m) == 0}
     """
     # FixMe: memoize
+
     z = 0
     for x in xrange(1,n+1):
         if moebius(x)==0:
@@ -46,6 +48,11 @@ def Z(n):
     return z
 
 def expand_tree_unique_prime_factorization(n, current, start_length):
+    """ Expand the tree, assuming the current node is a prime factorization.
+
+     Get all possible prime factorizations of the length start_length.  Then,
+     start_length + 2, etc"""
+
     length = start_length
     possibilities = current.possible_new_unique_prime_factorizations(length)
     while possibilities:
@@ -56,6 +63,8 @@ def expand_tree_unique_prime_factorization(n, current, start_length):
 
 
 def expand_tree(current, times):
+    """ Expand the tree starting from the node 'current' n times."""
+
     if times == 0:
         # We're done expanding the tree; finish
         return
@@ -64,9 +73,7 @@ def expand_tree(current, times):
 
     if m == -1:
         # N is the product of an odd number of distinct primes.
-        Node(n, [n], current) # It's always possible this is a prime - add this
-                              #is as one potential factorization
-        expand_tree_unique_prime_factorization(n, current, 3)
+        expand_tree_unique_prime_factorization(n, current, 1)
     elif m == 0:
         # The factorization of N contains a duplicated prime.
         f = current.smallest_new_factorizations_with_square()
@@ -106,7 +113,7 @@ def main(max_n):
     root = Node(1,[1],None)
     r = expand_tree(root,max_n-1)
     #r.clean()
-    #r.pp()
+    r.pp()
     #print count(r,30)
     z = 0
     # for x in xrange(1,2*3):
