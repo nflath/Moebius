@@ -69,6 +69,7 @@ class Node():
     def calculated_Z(self):
         """ Calculate Z based on this tree. """
         # FixMe: Slow.  Optimize
+
         r = 0
         f = self.flatten()
         x = []
@@ -136,6 +137,7 @@ class Node():
         a = self.flatten()
 
 
+
         for potential in r:
             for p in primes:
                 # Iterate through all factorizations of length-1.  Find the
@@ -151,9 +153,10 @@ class Node():
                 if possibility not in c:
                     exit = False
                     for f in a:
+                        x = sorted([p] + f)
                         if f == potential:
                             break
-                        elif sorted([p] + f) not in a:
+                        elif x not in a:
                             exit = True
                             break
                     if not exit:

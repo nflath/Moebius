@@ -114,11 +114,11 @@ def main(max_n):
     r = expand_tree(root,max_n-1)
     #r.clean()
     r.pp()
-    #print count(r,30)
+
     z = 0
     # for x in xrange(1,2*3):
     #      if moebius(x) == 0: z += 1
     #      print x "\t", z
 
 import cProfile
-cProfile.run("main(36)")
+cProfile.run("main(18)")
