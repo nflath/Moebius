@@ -71,8 +71,6 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
             smallest = p
     return n, smallest
 
-
-
 def new_unique_prime_factorizations(n, length, primes, factorizations):
     if length == 1:
         primes += [n]
@@ -90,17 +88,7 @@ def new_unique_prime_factorizations(n, length, primes, factorizations):
 
     for potential in r:
         added = False
-        if len(potential) > 1:
-            for x in potential:
-                for p in primes:
-                    n_, smallest = one_unique_prime_factorization(n, length, primes, factorizations, potential[0], p, smallest, c, a)
-                    for x in n_:
-                        if x not in result:
-                            #if n == 26: pdb.set_trace()
-                            result += [x]
-                        added = True
-                    if added: break
-        else:
+        for x in potential:
             for p in primes:
                 n_, smallest = one_unique_prime_factorization(n, length, primes, factorizations, potential[0], p, smallest, c, a)
                 for x in n_:
@@ -110,7 +98,6 @@ def new_unique_prime_factorizations(n, length, primes, factorizations):
                     added = True
                 if added:
                     break
-
     return result
 
 # FixMe: 16 produces 16 [[2, 2, 2, 2], [2, 3, 3], [2, 2, 5]] but should not generate [2, 2, 5]
