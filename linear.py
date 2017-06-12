@@ -140,6 +140,8 @@ def one_repeated_prime_factor(n, primes, factorizations, p, f, smallest_factoriz
     # if n == 12: pdb.set_trace()
     found = False
     possibility = sorted(f + [p])
+    if len(possibility) == len(set(possibility)):
+        return [], smallest_factorization_idx, False
     _, idx__ = index_recursive(factorizations, f)
     foundin, idx = index_recursive(factorizations, possibility)
     if not foundin:
@@ -185,9 +187,12 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
                 if smallest_factorization_idx is not None and f == factorizations[smallest_factorization_idx]:
                     break
                 f = f[0] # There was only one possibility for this space.
+
                 r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(n, primes, factorizations, p, f, smallest_factorization_idx, r)
                 if r_ and r_ not in r:
                     #if n == 9: pdb.set_trace()
+                    if n == 27 and len(r_) == len(set(r_)):
+                            pdb.set_trace()
                     r += [r_]
                 if break_:
                     break
@@ -200,6 +205,8 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
                 for x in f:
                     r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(n, primes, factorizations, p, x, smallest_factorization_idx, r)
                     if r_ and r_ not in r:
+                        if n == 27 and len(r_) == len(set(r_)):
+                            pdb.set_trace()
                         r += [r_]
                     if break_:
                         added = True

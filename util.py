@@ -202,6 +202,7 @@ class Node():
             self._primes = [x[0] for x in self.prime_factorizations(1)]
         return self._primes
 
+    # 27
     def smallest_new_factorizations_with_square(self):
         """Return the smallest possible new factorization that contains a replicated prime.
         """
