@@ -67,9 +67,24 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
     if not found:
         # The possibility is not already in the list of factorizations.  Go
         # through all factorizations before 'potential' and ensure that no
-        # factorization * p is lower than potential * p but doesn't exist
+        # factorization * p is lower than potential * p but doesn't exist.
         exit = False
+        found, idx := index_recursive(factorizations,potential)
+        assert found
+        while found:
+            old_idx = idx
+            found, idx := index_recursive(factorizations[idx:],potential)
+            idx += old_idx
+
+
         for f in factorizations:
+            allExist = True
+            for x in f:
+                if sorted([p] + list(x)) not in a:
+                    allExist = False
+
+
+
             x = sorted([p] + list(f[0]))
             # FixMe: This shouldn't just be f[0] - this doesn't work for multiple factors.
             if f[0] == potential:
@@ -77,7 +92,7 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
             elif x not in a:
                 exit = True
                 break
-        if not exit:
+        if allExist:
             # Didn't find any - this is a valid possibility
             n += [possibility]
             smallest = p
