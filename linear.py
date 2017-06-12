@@ -9,7 +9,7 @@ def factorize(n):
 
     assert n > 1
     factors = []
-    for i in xrange(2, n+1):
+    for i in range(2, n+1):
         while (n%i)==0:
             factors += [i]
             n = n / i
@@ -33,6 +33,46 @@ def moebius(n):
         return 0
     return math.pow(-1,len(f))
 
+def one_unique_prime_factorization(n, length, primes, factorizations, potential, p, smallest, c, a):
+    possibility = sorted(potential + [p])
+
+    n = []
+    if p == smallest:
+        return n, smallest
+    if possibility in n or len(set(possibility))!=len(possibility):
+        # Alread found this or it has a repeated prime
+        return n, smallest
+    found, idx = index_recursive(c, possibility)
+    if not found:
+        exit = False
+        for f in factorizations:
+            x = sorted([p] + list(f[0]))
+            if f[0] == potential:
+                break
+            elif x not in a:
+                exit = True
+                break
+        if not exit:
+            n += [possibility]
+            smallest = p
+        return n, smallest
+    if found and len(c[idx]) > 1:
+        # Check if there is a possibility that this is not taken:
+        allfound = True
+        for f in c[idx]:
+            if f == possibility:
+                continue
+            found_, _ = index_recursive(c[idx+1:],f)
+            if not found_:
+                allfound = False
+                break
+        if not allfound:
+            n += [possibility]
+            smallest = p
+    return n, smallest
+
+
+
 def new_unique_prime_factorizations(n, length, primes, factorizations):
     if length == 1:
         primes += [n]
@@ -40,66 +80,44 @@ def new_unique_prime_factorizations(n, length, primes, factorizations):
 
     r = [[x for x in x if len(x) == length - 1] for x in factorizations]
     c = [[x for x in x if len(x) == length] for x in factorizations]
-
-
-    # for a in r:
-    #     if len(a) > 1:
-    #         assert False
-    #for a in c:
-     #   if len(a) > 1:
-      #      assert False
-
-
     r = [x for x in r if x]
-    #c = [item for sublist in c for item in sublist]
-    n = []
+    result = []
     a = [item for sublist in factorizations for item in sublist]
 
     smallest = None
+
+    added = False
+
     for potential in r:
+        added = False
         if len(potential) > 1:
-            assert False
-        potential = potential[0]
-        for p in primes:
-            possibility = sorted(potential + [p])
+            for x in potential:
+                for p in primes:
+                    n_, smallest = one_unique_prime_factorization(n, length, primes, factorizations, potential[0], p, smallest, c, a)
+                    for x in n_:
+                        if x not in result:
+                            #if n == 26: pdb.set_trace()
+                            result += [x]
+                        added = True
+                    if added: break
+        else:
+            for p in primes:
+                n_, smallest = one_unique_prime_factorization(n, length, primes, factorizations, potential[0], p, smallest, c, a)
+                for x in n_:
+                    if x not in result:
+                        #if n == 26: pdb.set_trace()
+                        result += [x]
+                    added = True
+                if added:
+                    break
 
-            if p == smallest:
-                break
-            if possibility in n or p in potential:
-                # Alread found this or it has a repeated prime
-                break
-            found, idx = index_recursive(c, possibility)
-            if not found:
-                exit = False
-                for f in factorizations:
-                    x = sorted([p] + list(f[0]))
-                    if f[0] == potential:
-                        break
-                    elif x not in a:
-                        exit = True
-                        break
-                if not exit:
-                    n += [possibility]
-                    smallest = p
-                break
-            if found and len(c[idx]) > 1:
-                # Check if there is a possibility that this is not taken:
-                allfound = True
-                for f in c[idx]:
-                    if f == possibility:
-                        continue
-                    found_, _ = index_recursive(c[idx+1:],f)
-                    if not found_:
-                        allfound = False
-                        break
-                if not allfound:
-                    n += [possibility]
-                    smallest = p
+    return result
 
-    return n
-
-
+# FixMe: 16 produces 16 [[2, 2, 2, 2], [2, 3, 3], [2, 2, 5]] but should not generate [2, 2, 5]
+# FixMe: 30 produces 30 [[30]] but should also generate [2,3,5]
+# FixMe: 26 produces som bogus stuff
 def new_unique_prime_factorization(n, start_length, primes, factorizations):
+
     length = start_length
     possibilities = new_unique_prime_factorizations(n, length, primes, factorizations)
     result = []
@@ -132,26 +150,24 @@ def one_repeated_prime_factor(n, primes, factorizations, p, f, smallest_factoriz
             return [], idx__, True
 
     if foundin and len(factorizations[idx]) > 1:
+        #if n==12: pdb.set_trace()
+        f_ = factorizations[idx]
+        l = len(f_)
+        c = 1
+        my_idx = idx+1
+        failed = False
+        while not failed and c != l:
+            try:
+                my_idx += 1 + factorizations[my_idx:].index(f_)
+                c += 1
+            except:
+                failed = True
+        if c != l:
+            return possibility, idx__, True
+        else:
+            return [], smallest_factorization_idx, False
 
-        #my_idx = idx
-        #for newf in factorizations[idx]:
-#            foundin_, my_idx = index_recursive(factorizations[my_idx+1:], newf)
 
-
-        for newf in factorizations[idx]:
-
-            if possibility == newf:
-                continue
-
-
-            # If there are newf()
-            foundin_, idx_ = index_recursive(factorizations[idx+1:], newf)
-
-            if not foundin_ and possibility not in r:
-                return possibility, idx__, True
-            if foundin_:
-                if factorizations[idx + 1 + idx_] != factorizations[idx]:
-                    assert False
     return [], smallest_factorization_idx, False
 
 
@@ -161,16 +177,16 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
 
     import pdb
 
+
     for p in primes:
         for f in factorizations:
-
 
             if len(f) == 1:
                 if smallest_factorization_idx is not None and f == factorizations[smallest_factorization_idx]:
                     break
                 f = f[0] # There was only one possibility for this space.
                 r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(n, primes, factorizations, p, f, smallest_factorization_idx, r)
-                if r_:
+                if r_ and r_ not in r:
                     #if n == 9: pdb.set_trace()
                     r += [r_]
                 if break_:
@@ -178,84 +194,41 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
             else:
                 added = False
 
+                if smallest_factorization_idx is not None and x in factorizations[smallest_factorization_idx]:
+                    break
+
                 for x in f:
-                    if smallest_factorization_idx is not None and x in factorizations[smallest_factorization_idx]:
-                        break
-                    #if n == 20: pdb.set_trace()
                     r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(n, primes, factorizations, p, x, smallest_factorization_idx, r)
-                    if r_:
-
-
+                    if r_ and r_ not in r:
                         r += [r_]
                     if break_:
                         added = True
                         continue
                 if added:
                     break
-                    # FixMe: Try it with both.
-                    # assert False
 
-
-
-
-            # if f is smallest_factorization:
-            #     break
-
-            # found = False
-            # possibility = sorted(list(f) + [p])
-            # foundin, idx = index_recursive(factorizations, possibility)
-
-            # if not foundin:
-            #     if len(set(possibility)) != len(possibility) and possibility not in r:
-            #         r += [possibility]
-            #         found = True
-            #         smallest_factorization = f
-            #         break
-            #     elif possibility in r:
-            #         found = True
-            #         smallest_factorization = f
-            #         break
-
-            # if foundin and len(factorizations[idx]) > 1:
-            #     # This is a possibility if *any* path allows it; we need to figure this out
-            #     # For now, only do pairs
-            #     for newf in factorizations[idx]:
-            #         foundin_, idx_ = index_recursive(factorizations[idx+1:], newf)
-            #         if possibility == newf:
-            #             continue
-            #         if not foundin_ and possibility not in r:
-            #             r += [possibility]
-            #             found = True
-            #             smallest_factorization = f
-            #         else:
-            #             if factorizations[idx + 1 + idx_] != factorizations[idx]:
-            #                 import pdb
-            #                 pdb.set_trace()
-            #                 assert False
-            # if found:
-            #     break
     return r
 
 
 
 def main(max_n):
+
     primes = []
     factorizations = []
-    print 1, "[[1]]"
-    for n in xrange(2, max_n+1):
-        m = moebius(n)
 
+    for n in range(2, max_n+1):
+        m = moebius(n)
         if m == -1:
-            factorizations += [new_unique_prime_factorizations(n,1,primes,factorizations)]
+            factorizations += [new_unique_prime_factorization(n,1,primes,factorizations)]
         elif m == 0:
             factorizations += [new_repeated_prime_factorizations(n,primes,factorizations)]
         elif m == 1:
-            factorizations += [new_unique_prime_factorizations(n,2,primes,factorizations)]
+            factorizations += [new_unique_prime_factorization(n,2,primes,factorizations)]
         else:
             assert False
-    for n in xrange(0, len(factorizations)):
-        print n+2, factorizations[n]
-    #print factorizations
+    print(1, "[[1]]")
+    for n in range(0, len(factorizations)):
+        print(n+2, factorizations[n])
 
 import sys
 main(int(sys.argv[1]))
