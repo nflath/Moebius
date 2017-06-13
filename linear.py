@@ -6,17 +6,16 @@ def index_recursive(lst, elt, last=False):
     """Find elt in list of lists lst
 
     Returns whether or not the element was found, and the index of the
+    list it was found in.  If last is set, returns the last index of the
     list it was found in.
     """
     for l in lst:
         for e in l:
             if e == elt:
-                #return True, lst.index(l)
                 if not last:
                     return True, lst.index(l)
                 f, i = index_recursive(lst[lst.index(l)+1:],elt,last)
                 if f:
-                    #pdb.set_trace()
                     return True, i + lst.index(l) + 1
                 return True, lst.index(l)
 
@@ -40,6 +39,10 @@ def simplify(this, other):
     return this, other
 
 def lt_one(t, o, factorizations):
+    """ Returns whether we can show t < o or not.
+
+    Returns 0 if t < o, 1 if o > t, -1 if we don't know
+    """
     t_found, t_index = index_recursive(factorizations,t,True)
     o_found, o_index = index_recursive(factorizations,o)
 
@@ -52,9 +55,12 @@ def lt_one(t, o, factorizations):
     return 1
 
 def lt(this, other, factorizations):
+    """ Returns if we can show this < every element in other (aside itself).
 
+    Assumes this is also in other. """
 
     if len(other) == 1:
+        # The only element of other should be this, so just return
         return False
 
     for x in other:
@@ -68,13 +74,24 @@ def lt(this, other, factorizations):
        elif lt_one(t,o,factorizations) == 1:
            return False
        else:
-           # Try some tricky shit here
+           # Here, we couldn't determine t < o.  Try replacing parts of
+           # other to be >= o, and see if we can determine t < o that way.
+
+           # For example, say we have [2,5,5] < [3,3,3].  We know that this is
+           # equivalent to the question of [2,5,5] < [2,2,2,3], which we can
+           # simplify further to find an answer.
+
+           # FixMe: Need to expand this.  We only check one type of
+           # replacement; we may need to do all permutations?  Or check the
+           # entire list until we find the last possible value for what we are
+           # searching for.
+
            begin = x[:-1]
            if not begin:
+               # Other was a prime.  Can't do anything here.
                return False
            end = x[-1:]
            o_found_, o_index_ = index_recursive(factorizations, begin, True)
-           assert o_found_
 
            if len(factorizations[o_index_]) == 1:
                return False
@@ -98,7 +115,7 @@ def lt(this, other, factorizations):
 
 
 def gt(this, other, factorizations):
-    """Returns whether this > every other factorization in other, given the factorization orders defined in factorizations."""
+    """Returns whether this > every other factorization in other"""
     if len(other) == 1:
         return False
     for x in other:
@@ -164,7 +181,7 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
 
     result = []
     if p == smallest:
-        # FixMe: Move this out of the function
+        # FixMe: Move this out of this function into the containing one
         return [], smallest, False
     if possibility in factorizations:
         # Alread found this or it has a repeated prime
@@ -179,16 +196,15 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
         # through all factorizations before 'potential' and ensure that no
         # factorization * p is lower than potential * p but doesn't exist.
 
-        exit = False
         # FixMe: Do we also need to check those factorizations * a, where a is
         # a prime and a < p for all p?
 
         # FixMe: Why is this not needed in the repeated primes case?  Or is it, but we
-        # haven't hit the case
+        # haven't hit the case yet?
+
+        exit = False
 
         found, last_idx = index_recursive(factorizations,potential,True)
-
-        #if possibility == [2,3,5] and n == 17: pdb.set_trace()
 
         allExist = True
         for i in range(0,last_idx):
@@ -197,7 +213,7 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
                     allExist = False
                     break
         if allExist:
-            # Didn't find all of those - this is a valid possibility
+            # This is a valid possibility
             result += [possibility]
             smallest = p
             return result, smallest, True
@@ -205,8 +221,8 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
             return [], smallest, False
     if found:
         # We found the possibility in the list of factorizations - check if it
-        # can be a possibility anyway, due to
-        #if n == 30: pdb.set_trace()
+        # can be a possibility anyway, due to there being the chance of it
+        # being unused.
 
         f_ = factorizations[idx]
         l = len(f_) - 1
@@ -218,14 +234,27 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
                 l -= 1
             except:
                 failed = True
+        # FixMe: Is this correct?  I'm not sure it is in the case of multiple
+        # factors for the possibility...For example if we have a possibility of
+        # [[2,2,2],[3,3]] and then [[3,3],[3,5]] and then [[3,5],[2,2,2]].  But
+        # I'm not sure this can arise either.
+
         if l:
+            # There is the possibility this option is unused.
+            hasPrime = False
+            for x in f_:
+                if len(x) == 1:
+                    hasPrime = True
             result += [possibility]
             smallest = p
-            return result, smallest, True
-
-
-            # FixMe: Is this correct?  I'm not sure it is in the case of
-            # multiple factors for the possibility...
+            if hasPrime:
+                # If our possibility could have been a prime, continue going to
+                # generate the next possibility in our list anyway.  This is
+                # the case for n = 30 - We don't know if 29 factors to [29] or
+                # [2*3*5], so 30 can factor to [30], [2*3*5], or [2*3*7]
+                return result, smallest, False
+            else:
+                return result, smallest, True
     return [], smallest, False
 
 def new_unique_prime_factorizations_for_length(n, length, primes, factorizations):
@@ -248,7 +277,7 @@ def new_unique_prime_factorizations_for_length(n, length, primes, factorizations
     # search.
     r = [[x for x in x if len(x) == length - 1] for x in factorizations]
     r = [x for x in r if x]
-    # FixMe: I think we need to just walk though all factorizations period -
+    # FixMe: Do we need to just walk though all factorizations period -
     # otherwise we may add too much - IE, if we are searching for a
     # factorization of length 4, and we have a*b < c*d*e, and a*b is not in our
     # current list of factorizations, we don't want to skip it - we want to
@@ -264,13 +293,10 @@ def new_unique_prime_factorizations_for_length(n, length, primes, factorizations
         added = False
         for x in potential:
             for p in primes:
-                n_, smallest, break_ = one_unique_prime_factorization(n, length, primes, factorizations, potential[0], p, smallest, a)
-                # FixMe: Return whether to break from the search from here -
-                # don't just rely on whether we find a possibility
-
                 # FixMe: Early-exit using smallest in this function.  This
                 # prevents updates to smallest from occuring in the middle of
                 # iterating throught two 'equal' primes.
+                n_, smallest, break_ = one_unique_prime_factorization(n, length, primes, factorizations, potential[0], p, smallest, a)
                 for x in n_:
                     if x not in result:
                         result += [x]
@@ -321,6 +347,8 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest_factorization_id
         # FixMe: We need to check to make sure this possibility is not higher
         # than all others.  For example, at n=16, this generates [[2, 2, 2, 2],
         # [2, 3, 3], [2, 2, 5]], but 2,2,5 can be shown to be higher than both.
+        # Currently, we deal with this by pruning later, but it would be
+        # preferable to not generate it as an option in the first place.
         return possibility, idx__, True
 
     if foundin:
@@ -358,7 +386,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
     For each prime, loop through the factorizations of each n, and see
     if we can get a possibility for that pair.  Once you find a
     possibility for one factorization, you don't need to go further than
-    that for the next primes.
+    that factorization for the later primes.
     """
 
     r = []
@@ -373,22 +401,11 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
                 break
 
             for x in f:
-                #if n == 20 and p == 5 and x == [2, 2]: pdb.set_trace()
-
-                #if n == 9: pdb.set_trace()
-
-                r_, smallest_factorization_idx_, break_ = one_repeated_prime_factor(n, factorizations, p, x, smallest_factorization_idx)
-
-
-                #if r_ and r_ in r:
-                    #if n == 20: pdb.set_trace()
-                    #break_  = False
-                    #continue
-
-                smallest_factorization_idx = smallest_factorization_idx_
+                r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(n, factorizations, p, x, smallest_factorization_idx)
                 if r_ and r_ not in r:
                     r += [r_]
                 break_ |= break_
+
             if break_:
                 break
 
@@ -411,7 +428,7 @@ def generate_factorization_possibilities(max_n):
             factorizations += [new_unique_prime_factorizations(n,2,primes,factorizations)]
         else:
             assert False
-        #if n == 30: pdb.set_trace()
+
         if len(factorizations[-1]) > 1:
            # Prune the possibilities.  Check if any of the possibilities we
            # just added are greater than one of the others in the list; if so,
@@ -427,43 +444,45 @@ def generate_factorization_possibilities(max_n):
                        remove = x
                        break
                if remove:
-                   #print('pruning from n:',n,'possibility:',remove)
                    i = factorizations[-1].index(remove)
                    factorizations[-1] = factorizations[-1][:i] + factorizations[-1][i+1:]
+
         if len(factorizations[-1]) > 1:
+            # More pruning.  Check if any of the possibilities are less than
+            # all the other possibilities in the list; if so, only keep it.
             save = None
             for x in factorizations[-1]:
                 #if n == 20: pdb.set_trace()
-                if lt(x,factorizations[-1], factorizations):
                     save = x
                     break
             if save:
                 factorizations[-1] = [save]
 
+        if factorize(n) not in factorizations[-1]:
+            print('ERROR: true factorization:', factorize(n), 'not in factorization list for n:',n,factorizations[-1])
+
 
     return factorizations
 
 def test():
-    expected = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2], [3, 3]], [[2, 2, 2], [3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7], [3, 5]], [[2, 7], [3, 5]], [[2, 2, 2, 2], [2, 3, 3]], [[17]], [[2, 2, 2, 2], [2, 3, 3]], [[19]], [[2, 2, 5]], [[2, 11], [3, 7]], [[2, 11], [3, 7]], [[23]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 13], [3, 11], [5, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[29], [2, 3, 5]], [[30], [2, 3, 5]]]
+    # FixMe: Add more tests, possibly unit ones for the various utilities
 
-    actual = generate_factorization_possibilities(min(int(sys.argv[1]),len(expected)))
-    #print(actual)
-    print(len(actual))
+    # Basic test: Have a known good list, check generated results against it
+    # and print a error if different.
+
+    expected = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2], [3, 3]], [[2, 2, 2], [3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7], [3, 5]], [[2, 7], [3, 5]], [[2, 2, 2, 2], [2, 3, 3]], [[17]], [[2, 2, 2, 2], [2, 3, 3]], [[19]], [[2, 2, 5]], [[2, 11], [3, 7]], [[2, 11], [3, 7]], [[23]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 13], [3, 11], [5, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[29], [2, 3, 5]], [[30], [2, 3, 5], [2, 3, 7]]]
+    actual = generate_factorization_possibilities(min(int(sys.argv[1]),
+                                                      len(expected)+1))
     for i in range(0,len(actual)):
         if expected[i]  != actual[i]:
             print("ERROR: at n:",i+2,"expected",expected[i],"but was",actual[i])
-    #print(actual)
-    #assert(generate_factorization_possibilities(30)==f)
 
 if __name__ == "__main__":
+    # Run the test first so we know if anything is broken
     test()
+
+    # Generate + print out factorization possibilities
     f = generate_factorization_possibilities(int(sys.argv[1]))
-    #print(lt([2,2,5], [[2, 2, 5], [2, 2, 2, 3], [3, 3, 3]], f))
-    #print(lt([2,2,2], [[2, 2, 2], [3,3]], f[:7]))
     print(1, "[[1]]")
     for n in range(0, len(f)):
         print(n+2, f[n])
-    print(f)
-
-
-# FixMe: 20 produces [[2, 2, 5], [2, 2, 2, 3], [3, 3, 3]]- should additionally produce [5,5]
