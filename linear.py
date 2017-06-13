@@ -202,8 +202,6 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
         # FixMe: Why is this not needed in the repeated primes case?  Or is it, but we
         # haven't hit the case yet?
 
-        exit = False
-
         found, last_idx = index_recursive(factorizations,potential,True)
 
         allExist = True
