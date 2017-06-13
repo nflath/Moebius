@@ -210,6 +210,17 @@ def one_unique_prime_factorization(n, length, primes, factorizations, potential,
                 if sorted([p] + x) not in a:
                     allExist = False
                     break
+
+        if len(potential) == 1:
+            # If both p and potential are primes, consider the reverse case as
+            # well (walk factorizations up to p, adding potential to them)
+            found, last_idx = index_recursive(factorizations,[p],True)
+            for i in range(0,last_idx):
+                for x in factorizations[i]:
+                    if sorted(potential + x) not in a:
+                        allExist = False
+                        break
+
         if allExist:
             # This is a valid possibility
             result += [possibility]
@@ -468,7 +479,7 @@ def test():
     # Basic test: Have a known good list, check generated results against it
     # and print a error if different.
 
-    expected = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2], [3, 3]], [[2, 2, 2], [3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7], [3, 5]], [[2, 7], [3, 5]], [[2, 2, 2, 2], [2, 3, 3]], [[17]], [[2, 2, 2, 2], [2, 3, 3]], [[19]], [[2, 2, 5]], [[2, 11], [3, 7]], [[2, 11], [3, 7]], [[23]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 13], [3, 11], [5, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[29], [2, 3, 5]], [[30], [2, 3, 5], [2, 3, 7]]]
+    expected = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2], [3, 3]], [[2, 2, 2], [3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7], [3, 5]], [[2, 7], [3, 5]], [[2, 2, 2, 2], [2, 3, 3]], [[17]], [[2, 2, 2, 2], [2, 3, 3]], [[19]], [[2, 2, 5]], [[2, 11], [3, 7]], [[2, 11], [3, 7]], [[23]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 13]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[29], [2, 3, 5]], [[30], [2, 3, 5]]]
     actual = generate_factorization_possibilities(min(int(sys.argv[1]),
                                                       len(expected)+1))
     for i in range(0,len(actual)):
@@ -484,3 +495,4 @@ if __name__ == "__main__":
     print(1, "[[1]]")
     for n in range(0, len(f)):
         print(n+2, f[n])
+    print(f)
