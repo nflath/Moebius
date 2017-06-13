@@ -450,7 +450,7 @@ def generate_factorization_possibilities(max_n):
             # all the other possibilities in the list; if so, only keep it.
             save = None
             for x in factorizations[-1]:
-                #if n == 20: pdb.set_trace()
+                if lt(x,factorizations[-1], factorizations):
                     save = x
                     break
             if save:
