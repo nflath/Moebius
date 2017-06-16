@@ -1,0 +1,169 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{longtable}
+\usepackage{mathtools}
+
+%\addtolength{\oddsidemargin}{-.875in}
+%\addtolength{\evensidemargin}{-.875in}
+%\addtolength{\textwidth}{1.75in}
+%\addtolength{\topmargin}{-.875in}
+%\addtolength{\textheight}{1.75in}
+
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usetikzlibrary{automata,positioning}
+
+\begin{document}  
+\begin{center} {\bf Moebius Toolbox} \end{center}
+
+Let $S$ be the set of infinite sequences  $a=(a_1, a_2, \dots)$ where $a_i\in {\bf N} = \{0, 1, 2, 3, \ldots\}$ and only a finite number of $a_i$'s are nonzero.
+
+
+
+You can think of $S$ as giving prime factorizations.  The sequence $a$ corresponds to the product $p(a) =\prod_i p_i^{a_i} $ where $p_i$ is the $i$th prime number.   The product $p(a)*p(b)$ of integers corresponds to the sum $a+b$ of sequences.  Under addition, $S$ is a free semigroup. We will give $S$  a partial order and define a moebius-like function on it. The Moebius problem is to show that  the partial order on $S$  can be extended in a unique way to a total order  where moebius on $S$ is compatible with the known values of the moebius function $\mu$ on integers.  
+
+This document suggests some elements of a software toolbox to facilitate experimentation.   
+
+
+
+
+\begin{section}{Operating on $S$ and its subsets}
+
+\begin{subsubsection}{A moebius function for $S$}
+\begin{enumerate}
+\item We desire a function $\mu_S : S\rightarrow \{0, 1, -1\}$ such that 
+\begin{enumerate}
+\item  $\mu_S(a) = -1$ if an odd number of $a_i$'s are 1 and all the other $a_i$'s are 0.  
+\item  $\mu_S(a) = 1$ if an even number of $a_i$'s are 1 and all the other $a_i$'s are 0. 
+\item $\mu_S(a) = 0$ if one or more $a_i$'s is 2 or greater. 
+
+\end{enumerate}
+
+
+
+\item We desire  functions that  takes as input a finite subset $X$ of $S$ and produces a list of the elements of $X$ with specified $\mu_X$ values. 
+\end{enumerate}
+\end{subsubsection}
+
+\begin{subsubsection}{Partial ordering on $S$}
+Given $a= (a_i)$ and $b=(b_i)$ in $S$, we say $a\le b$ if and only if $a_i\le b_i$ for all $i$. We say $a< b$ if $a\le b$ and $a\ne b$.
+
+We desire a function 
+$$\hbox{ord}: S\times S \rightarrow \{0, 1, -1, 99\}$$ such that 
+$$\hbox{ord}(a, b)= \begin{cases} 1 &  \hbox{if } a<  b \cr   0&\hbox{if } a=b\cr  -1 & \hbox{if } b<a  \cr 
+99& \hbox{otherwise}\end{cases}.$$
+
+\end{subsubsection}
+
+\begin{subsubsection}{Comparable pairs}
+We desire a function that has 
+
+Input:  A finite subset of $S$.
+
+Output: A list of all pairs $(a, b)$ such that $a\in S$, $b\in S$, and $a<b$.  
+
+\end{subsubsection}
+
+\begin{subsubsection}{Saturation}
+ A finite subset $X \subset S$ is saturated if and only if  
+ the conditions  $b \in X$, $a\in S$,  and $a\le b$ together imply that $a\in X$.  
+ 
+ We desire a function 
+ $$\hbox{sat}: \hbox{Finite subsets of $S$} \rightarrow \{0, 1\}$$ such that 
+$$\hbox{sat}(X)  = \begin{cases}1 & \hbox{if $X$ is saturated }\cr 0&\hbox{otherwise}\end{cases}.$$
+
+\end{subsubsection}
+\begin{subsubsection}{Options}
+Given a saturated finite subset  $X\subset S$, we define   $\hbox{options}(X) \subset S$  to be the set of elements $s\in S$ such that 
+\begin{enumerate}
+\item $s\notin X$
+\item $X\cup \{s\}$ is saturated.   
+\end{enumerate}
+In other words,  $s\in \hbox{options }(X)$ if and only if $s=(s_i) \in S$, $s \notin X$, and there exists $a=(a_i) \in S$ such that $s_i= a_i$ for all $i$ but one value $i=I$ and $s_I=a_I+1$.  
+
+
+
+We desire a function  taking as input a saturated set $X$ and listing the elements of $\hbox{options}(X)$.
+
+
+
+\end{subsubsection}
+
+\end{section}
+
+\begin{section}{Functions from $[1, N]$ to $S$}
+\begin{subsubsection}{1-to-1}
+We desire a function with 
+
+Input:  a function $f:\{1, 2, 3, \ldots, N\} \rightarrow S$.
+
+Output: YES if $f$  is 1-to-1 ($a\ne b$ implies $f(a)\ne f(b)$); NO if $f$ is not 1-to-1. 
+\end{subsubsection}
+
+
+\begin{subsubsection}{Image}
+We desire a function with 
+
+Input: a  function $f:\{1, 2, 3, \ldots, N\} \rightarrow S$. 
+
+Output: a listing of the elements of $f(\{1, \ldots N\} )$, the image of $f$.  
+
+
+
+
+\end{subsubsection}
+
+
+\begin{subsubsection}{Inverse}
+Input: a 1-to-1 function $f:\{1, 2, 3, \ldots, N\} \rightarrow S$ and an element $a$ of $X=f(\{1, \ldots N\} )= \hbox{image}(f)$.
+
+Output:  $n= f_{\hbox{inv}}(a) \in \{1, 2, \ldots N\}$ defined by the property $f(n)=a$, so $f(f_{\hbox{inv}}(a))=a$. 
+
+\end{subsubsection}
+
+\begin{subsubsection}{Testing}
+
+Input:  function $f: \{1, \ldots, N\} \rightarrow S$.
+
+Output:  1 if $f$ is  acceptable, 0 if it is not. 
+
+Acceptable means that 
+\begin{enumerate}
+\item $f$ is 1-to-1.
+\item $f(1)= (0, 0, 0, \ldots)$ is the zero sequence.
+\item Define the length of a sequence $a= (a_1, a_2, \ldots)\in S$ to be the largest index $i$ such that $a_i>0$.  Define the length of $f$ to be the largest length of any sequence $f(n)\in S$ for $1\le n \le N$.  Acceptable requires that if $L$ is the length of $f$, then for every index $1\le i \le L$  there is at least one integer $n$ with $1\le n \le N$ such that 
+$f(n)_i >0$. (Intuitively, we do not skip primes.)
+\item $f(\{1, \ldots, N\})$ is saturated.
+\item $\mu(n) =\mu_S (f(n))$ for $1\le n \le N$. 
+\item If $a, b \in f(\{1, \ldots, N\})$ and $a<b$ then $f_{\hbox{inv} }(a) < f_{\hbox{inv} }(b).$
+\end{enumerate}
+
+\end{subsubsection}
+
+\begin{subsubsection}{Questions}
+For given $N$ we would like to find out the following statistics.
+
+\begin{enumerate}
+\item Given $N$, how many  acceptable functions   $f: [0, N] \rightarrow S$ are there? 
+
+We know for example  that there is just 1 for $1\le N\le 7$ and exactly 2 if $8\le N\le 13$.   It might be 216 for $N=36$. 
+
+\item  Let $A\subset [1, N]$  be the set of integers $n$ such that $f(n)$ has the same same value for all acceptable functions $f: [0, N] \rightarrow S$.  For example, $A$ will contain at least $\{1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13\}$ but will not contain 8 and 9 till $N$ is large enough to resolve the $2^3$, $3^2$ confusion.  I would like to be able to list the elements of $A$ for a given $N$.
+
+
+\item Upon input $N$ and an integer $n$ with $1\le n\le N$, output is a list of all elements $f(n)\in S$ where $f$ ranges over all acceptable functions $f: [0, N] \rightarrow S$. This is a list of a subset of $L$. (giving potential factorizations of $n$.)
+
+\item Given $n$ to find the smallest $N \ge n$ such that that $f(n)\in S$ has the same value for all acceptable functions $f: [0, N] \rightarrow S$.
+
+
+\end{enumerate}
+
+
+\end{subsubsection}
+
+
+
+\end{section}
+
+\end{document}
