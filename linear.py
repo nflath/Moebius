@@ -2,6 +2,38 @@ import math
 import pdb
 import sys
 
+def finished(f, factorizations):
+    # Returns whether we know all potential locations of f in factorizations
+
+    count = 0
+    found, idx = index_recursive(factorizations, f)
+    if not found:
+        return False
+    all_fact = factorizations[idx]
+
+
+    while found:
+        if factorizations[idx] == all_fact:
+            count += 1
+            found, idx_ = index_recursive(factorizations[idx+1:], f)
+            idx = idx_ + idx + 1
+        else:
+            return False
+    return count == len(all_fact)
+
+def filter_possibility(f, factorizations):
+    # Returns whether this can be a possibility
+
+    for f_ in factorizations:
+        for x in f_:
+            if lt_one(f, x, factorizations)==0 and \
+                finished(x, factorizations):
+                    pdb.set_trace()
+                    lt_one(f, x, factorizations)
+                    return False
+    return True
+
+
 def index_recursive(lst, elt, last=False):
     """Find elt in list of lists lst
 
@@ -48,7 +80,7 @@ def lt_one(t, o, factorizations):
 
     if t_found and not o_found:
         return 0
-    if t_index < o_index:
+    if t_found and t_index < o_index:
         return 0
     if t_index == o_index:
         return -1
@@ -466,6 +498,11 @@ def generate_factorization_possibilities(max_n):
                     break
             if save:
                 factorizations[-1] = [save]
+
+        remainder = []
+        for x in factorizations[-1]:
+            remainder += [x]
+        factorizations[-1] = remainder
 
         if factorize(n) not in factorizations[-1]:
             print('ERROR: true factorization:', factorize(n), 'not in factorization list for n:',n,factorizations[-1])
