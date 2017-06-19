@@ -283,32 +283,6 @@ def lt_one_(this, other, factorizations):
 
 
 
-
-def gt(this, other, factorizations):
-    """Returns whether this > every other factorization in other"""
-    if len(other) == 1:
-        return False
-    for x in other:
-        if this == x:
-            # Don't compare to ourselves
-            continue
-        t, o = simplify(this, x)
-
-        # If other is in the list but not this or the last index of other is
-        # before the first index of this, this > other.
-        t_found, t_index = index_recursive(factorizations,t)
-        o_found, o_index = index_recursive(factorizations,o,True)
-
-        if o_found and not t_found:
-            pass #return True
-        elif o_index < t_index:
-            pass #return True
-        else:
-            return False
-
-    return True
-
-
 def factorize(n):
     """Returns the factorization of n"""
     # FixMe: This is unnecessary in some cases - if we already have a duplicate
@@ -611,24 +585,6 @@ def generate_factorization_possibilities(max_n):
             factorizations += [new_unique_prime_factorizations(n,2,primes,factorizations)]
         else:
             assert False
-
-        if len(factorizations[-1]) > 1:
-           # Prune the possibilities.  Check if any of the possibilities we
-           # just added are greater than one of the others in the list; if so,
-           # remove it.
-           changed = True
-
-           while changed and len(factorizations[-1]) > 1:
-               changed = False
-               remove = []
-               for x in factorizations[-1]:
-                   if gt(x,factorizations[-1],factorizations):
-                       changed = True
-                       remove = x
-                       break
-               if remove:
-                   i = factorizations[-1].index(remove)
-                   factorizations[-1] = factorizations[-1][:i] + factorizations[-1][i+1:]
 
         if len(factorizations[-1]) > 1:
             # More pruning.  Check if any of the possibilities are less than
