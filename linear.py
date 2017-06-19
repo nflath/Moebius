@@ -1,6 +1,65 @@
 import math
 import pdb
 import sys
+import itertools
+
+def eq_one(this, other, factorizations):
+    """ Returns the set of factorizations in otherthat are equivalent to this. """
+
+    t, o = simplify(this, other)
+    if t==this:
+        return False
+    for x in other:
+        if this == x:
+            continue
+            # Don't compare to ourselves
+        _, idx = index_recursive(factorizations,t)
+        if index_recursive(factorizations,t) == index_recursive(factorizations,o) \
+          and idx+1 != len(factorizations):
+            return True
+    return False
+
+def partition(s, factorizations):
+    """Partitions the set of factorizations 's' into  equal groupings.
+
+    For example, [2,2,2,3] and [3,3,3] will be grouped together while
+    [2,2,2] and [3,3] have not been disambiguated.
+    """
+
+    r = []
+    for x in s:
+        f, _ = index_recursive(r,x)
+        if f:
+            continue
+        r_ = [x]
+        for y in s:
+            if x == y:
+                continue
+            f, _ = index_recursive(r,y)
+            if f:
+                continue
+
+            if eq_one(x,y,factorizations):
+                r_ += [y]
+        r += [r_]
+    return r
+
+def finished_nolt(f, factorizations):
+    count = 0
+    found, idx = index_recursive(factorizations, f)
+    if not found:
+        return False
+    all_fact = factorizations[idx]
+
+
+    while found:
+        if factorizations[idx] == all_fact:
+            count += 1
+            found, idx_ = index_recursive(factorizations[idx+1:], f)
+            idx = idx_ + idx + 1
+        else:
+            return True
+    return count==len(all_fact)
 
 def finished(f, factorizations):
     # Returns whether we know all potential locations of f in factorizations
@@ -18,7 +77,22 @@ def finished(f, factorizations):
             found, idx_ = index_recursive(factorizations[idx+1:], f)
             idx = idx_ + idx + 1
         else:
-            return False
+            break
+
+    if count == len(all_fact):
+        return True
+
+    for i in range(idx, len(factorizations)):
+        lt_all = True
+        #pdb.set_trace()
+        for x in factorizations[i]:
+
+            if lt_one(x, f, factorizations) != 0:
+                lt_all = False
+        if lt_all:
+            #pdb.set_trace()
+            return True
+
     return count == len(all_fact)
 
 def filter_possibility(f, factorizations):
@@ -26,11 +100,13 @@ def filter_possibility(f, factorizations):
 
     for f_ in factorizations:
         for x in f_:
-            if lt_one(f, x, factorizations)==0 and \
-                finished(x, factorizations):
-                    pdb.set_trace()
-                    lt_one(f, x, factorizations)
-                    return False
+            #if f == [2,3,5] and x == [2,2,3,3]: pdb.set_trace()
+            #if x == [2,2,7] and finished(x, factorizations): pdb.set_trace()
+            if finished(x, factorizations) and \
+              lt_one(f, x, factorizations)==0:
+              #pdb.set_trace()
+              lt_one(f, x, factorizations)
+              return False
     return True
 
 
@@ -70,79 +146,141 @@ def simplify(this, other):
             i = i + 1
     return this, other
 
-def lt_one(t, o, factorizations):
+def lt_one(t_, o_, factorizations):
     """ Returns whether we can show t < o or not.
 
     Returns 0 if t < o, 1 if o > t, -1 if we don't know
-    """
+    This is a set of possible factorizations, and other is a set of
+    sets.  We need to make sure that, for each set in other, at least
+    one factorization of this is less than one of the factorizations in
+    other.
+     """
+
+
+    t, o = simplify(t_,o_)
+
+    if t == [2,2,2,3] and o == [2,2,7]: pdb.set_trace()
+
+    if not t and not o:
+        return 1
+    if not t:
+        return 0
+    if not o:
+        return -1
+
+
+
+
     t_found, t_index = index_recursive(factorizations,t,True)
     o_found, o_index = index_recursive(factorizations,o)
 
     if t_found and not o_found:
+        if not finished_nolt(t_,factorizations) or not \
+        finished_nolt(o_, factorizations):
+            return -1
         return 0
     if t_found and t_index < o_index:
+        if not finished_nolt(t_,factorizations) or not \
+          finished_nolt(o_, factorizations):
+            return -1
         return 0
     if t_index == o_index:
         return -1
     return 1
 
-def lt(this, other, factorizations):
-    """ Returns if we can show this < every element in other (aside itself).
 
-    Assumes this is also in other. """
+def lt_one__(this, other, factorization):
+    """ Returns True if this < other given the factorizations, false otherwise.
 
-    if len(other) == 1:
-        # The only element of other should be this, so just return
+    False does not mean unabiguously greater than; we could just not know (or be equal)
+    """
+
+    t, o = simplify(this, other)
+
+    # If t completely eliminates o, then t > o (and vice versa)
+    if not t and not o:
+        return False
+    if not t:
+        return True
+    if not o:
         return False
 
-    for x in other:
-       if this == x:
-           continue
+    # FixMe: Does this rely on t being finished?
+    t_found, t_index = index_recursive(factorizations,t,True)
+    o_found, o_index = index_recursive(factorizations,o)
 
-       t, o = simplify(this, x)
+    if t_found and o_found and t_index < o_index:
+        return True
+    if t_found and not o_found:
+        # We managed to find t, but have not generated o yet - so O must be larger.
+        return False
+    if o_found and not t_found:
+        return False
 
-       if lt_one(t,o,factorizations) == 0:
-           continue
-       elif lt_one(t,o,factorizations) == 1:
-           return False
-       else:
-           # Here, we couldn't determine t < o.  Try replacing parts of
-           # other to be >= o, and see if we can determine t < o that way.
+def lt(this, other, factorizations):
+    """Returns if we can show this < every element in other (aside itself).
 
-           # For example, say we have [2,5,5] < [3,3,3].  We know that this is
-           # equivalent to the question of [2,5,5] < [2,2,2,3], which we can
-           # simplify further to find an answer.
+    This is a set of possible factorizations, and other is a set of
+    sets.  We need to make sure that, for each set in other, at least
+    one factorization of this is less than one of the factorizations in
+    other.
+    """
 
-           # FixMe: Need to expand this.  We only check one type of
-           # replacement; we may need to do all permutations?  Or check the
-           # entire list until we find the last possible value for what we are
-           # searching for.
+    for other_set in other:
 
-           begin = x[:-1]
-           if not begin:
-               # Other was a prime.  Can't do anything here.
-               return False
-           end = x[-1:]
-           o_found_, o_index_ = index_recursive(factorizations, begin, True)
-
-           if len(factorizations[o_index_]) == 1:
-               return False
-
-           for x in factorizations[o_index_]:
-               if x == begin:
-                   continue
-               new = x + end
-               t, o = simplify(this, new)
-               if lt_one(t,o,factorizations) == 0:
-                   continue
-               elif lt_one(t,o,factorizations) == 1:
-                   return False
-               else:
-                   # Still couldnt find it
-                   return False
-
+        if other_set is this:
+            continue
+        lt_ = False
+        for other_element in other_set:
+            if lt_:
+                continue
+            for this_element in this:
+                if lt_:
+                    continue
+                if lt_one_(this_element,other_element,factorizations):
+                    lt_ = True
+        if not lt_:
+            return False
 
     return True
+
+def eq_one(this, other, factorizations):
+    """ Returns the set of factorizations in otherthat are equivalent to this. """
+    t, o = simplify(this, other)
+    if t==this:
+         return False
+    _, idx = index_recursive(factorizations,t)
+    if index_recursive(factorizations,t) == index_recursive(factorizations,o) \
+      and idx+1 != len(factorizations):
+        return True
+    return False
+
+
+def lt_one_(this, other, factorizations):
+
+    t, o = simplify(this, other)
+
+    for t_perm in itertools.permutations(t):
+        for t_split_idx in range(0,len(t)):
+            for o_perm in itertools.permutations(o):
+                for o_split_idx in range(0,len(o)):
+
+                    t_tmp_begin = sorted(list(t_perm[:t_split_idx]))
+                    t_tmp_end   = sorted(list(t_perm[t_split_idx:]))
+                    o_tmp_begin = sorted(list(o_perm[:o_split_idx]))
+                    o_tmp_end   = sorted(list(o_perm[o_split_idx:]))
+                    if t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
+                        if lt_one(t_tmp_begin, o_tmp_begin, factorizations)==0 and \
+                          lt_one(t_tmp_end, o_tmp_end, factorizations)==0:
+                          return True
+                    elif t_tmp_begin and o_tmp_begin and not t_tmp_end and not o_tmp_end:
+                        if lt_one(t_tmp_begin, o_tmp_begin, factorizations)==0:
+                            return True
+                    elif t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
+                        if lt_one(t_tmp_end, o_tmp_end, factorizations)==0:
+                            return True
+    return False
+
 
 
 
@@ -405,17 +543,19 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest_factorization_id
         # On the other hand, if n=12, once we check possibility=[2,2,2], we find that
         # both n=8 and n=9 are [[2, 2, 2], [3, 3]], so [2,2,2] is not an option for n=12.
 
-        f_ = factorizations[idx]
-        l = len(f_) - 1
-        my_idx = idx+1
-        failed = False
-        while not failed and l:
-            try:
-                my_idx += 1 + factorizations[my_idx:].index(f_)
-                l -= 1
-            except:
-                failed = True
-        if l:
+
+        # f_ = factorizations[idx]
+        # l = len(f_) - 1
+        # my_idx = idx+1
+        # failed = False
+        # while not failed and l:
+        #     try:
+        #         my_idx += 1 + factorizations[my_idx:].index(f_)
+        #         l -= 1
+        #     except:
+        #         failed = True
+        # if l:
+        if not finished(possibility, factorizations):
             return possibility, idx__, True
         else:
             return [], smallest_factorization_idx, False
@@ -442,7 +582,9 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
                 break
 
             for x in f:
+                #if n == 32 and x == [2,2,2,2]: pd.bset_trace()
                 r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(n, factorizations, p, x, smallest_factorization_idx)
+
                 if r_ and r_ not in r:
                     r += [r_]
                 break_ |= break_
@@ -491,22 +633,42 @@ def generate_factorization_possibilities(max_n):
         if len(factorizations[-1]) > 1:
             # More pruning.  Check if any of the possibilities are less than
             # all the other possibilities in the list; if so, only keep it.
-            save = None
-            for x in factorizations[-1]:
-                if lt(x,factorizations[-1], factorizations):
-                    save = x
-                    break
-            if save:
-                factorizations[-1] = [save]
+
+            save = factorizations[-1]
+            x = partition(factorizations[-1],factorizations)
+            for p in x:
+                if lt(p, x, factorizations):
+                    save = p
+                    lt(p, x, factorizations)
+            factorizations[-1] = save
 
         remainder = []
         for x in factorizations[-1]:
-            remainder += [x]
+            #if n == 37 and x == [2, 3, 5]: pdb.set_trace()
+            if filter_possibility(x, factorizations[:-1]):
+                remainder += [x]
+
         factorizations[-1] = remainder
+
+
+        if len(factorizations[-1]) == 1:
+            # Go backwards in order to elimiate possibilities that are greater than this.
+
+            for i in range(0, len(factorizations)-1):
+                if n == 46 and i == 43:
+                    pdb.set_trace()
+                r = []
+                for x in factorizations[i]:
+
+                    if not(lt_one(factorizations[-1][0],x,factorizations[:-1]) == 0):
+                        r += [x]
+                    else:
+                        print("foo")
+                factorizations[i] = r
+
 
         if factorize(n) not in factorizations[-1]:
             print('ERROR: true factorization:', factorize(n), 'not in factorization list for n:',n,factorizations[-1])
-
 
     return factorizations
 
@@ -516,12 +678,20 @@ def test():
     # Basic test: Have a known good list, check generated results against it
     # and print a error if different.
 
+    f = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2], [3, 3]], [[2, 2, 2], [3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7], [3, 5]], [[2, 7], [3, 5]], [[2, 2, 2, 2], [2, 3, 3]], [[17]], [[2, 2, 2, 2], [2, 3, 3]], [[19]], [[2, 2, 5]], [[2, 11], [3, 7]], [[2, 11], [3, 7]], [[23]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 13]]]
+    print(finished([2,2,2,3],f))
+
+
     expected = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2], [3, 3]], [[2, 2, 2], [3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7], [3, 5]], [[2, 7], [3, 5]], [[2, 2, 2, 2], [2, 3, 3]], [[17]], [[2, 2, 2, 2], [2, 3, 3]], [[19]], [[2, 2, 5]], [[2, 11], [3, 7]], [[2, 11], [3, 7]], [[23]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 13]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[2, 2, 2, 3], [3, 3, 3], [5, 5], [2, 2, 7]], [[29], [2, 3, 5]], [[30], [2, 3, 5]]]
     actual = generate_factorization_possibilities(min(int(sys.argv[1]),
                                                       len(expected)+1))
+
     for i in range(0,len(actual)):
         if expected[i]  != actual[i]:
             print("ERROR: at n:",i+2,"expected",expected[i],"but was",actual[i])
+
+
+
 
 if __name__ == "__main__":
     # Run the test first so we know if anything is broken
