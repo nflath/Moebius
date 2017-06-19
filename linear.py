@@ -3,22 +3,6 @@ import pdb
 import sys
 import itertools
 
-def eq_one(this, other, factorizations):
-    """ Returns the set of factorizations in otherthat are equivalent to this. """
-
-    t, o = simplify(this, other)
-    if t==this:
-        return False
-    for x in other:
-        if this == x:
-            continue
-            # Don't compare to ourselves
-        _, idx = index_recursive(factorizations,t)
-        if index_recursive(factorizations,t) == index_recursive(factorizations,o) \
-          and idx+1 != len(factorizations):
-            return True
-    return False
-
 def partition(s, factorizations):
     """Partitions the set of factorizations 's' into  equal groupings.
 
@@ -39,7 +23,8 @@ def partition(s, factorizations):
             if f:
                 continue
 
-            if eq_one(x,y,factorizations):
+            if not lt_one_(x,y,factorizations) and \
+                not lt_one_(x,y,factorizations):
                 r_ += [y]
         r += [r_]
     return r
@@ -243,18 +228,6 @@ def lt(this, other, factorizations):
             return False
 
     return True
-
-def eq_one(this, other, factorizations):
-    """ Returns the set of factorizations in otherthat are equivalent to this. """
-    t, o = simplify(this, other)
-    if t==this:
-         return False
-    _, idx = index_recursive(factorizations,t)
-    if index_recursive(factorizations,t) == index_recursive(factorizations,o) \
-      and idx+1 != len(factorizations):
-        return True
-    return False
-
 
 def lt_one_(this, other, factorizations):
 
