@@ -197,9 +197,8 @@ def lt_one_(this, other, factorizations):
 
                     t_tmp_begin = sorted(list(t_tmp_begin))
                     o_tmp_begin = sorted(list(o_tmp_begin))
-
-                    o_tmp_end = copy.copy(o)
                     t_tmp_end = copy.copy(t)
+                    o_tmp_end = copy.copy(o)
 
                     for x in t_tmp_begin:
                         t_tmp_end.remove(x)
@@ -212,16 +211,20 @@ def lt_one_(this, other, factorizations):
                         end_val = lt_one(t_tmp_end, o_tmp_end, factorizations)
                         if begin_val == 0 and end_val == 0:
                             return True
-                        #elif begin_val ==1 and end_val == 1:
-                            #return False
-                        #return False
-
+                        elif begin_val == 1 and end_val == 1:
+                            return False
                     elif t_tmp_begin and o_tmp_begin and not t_tmp_end and not o_tmp_end:
-                        if lt_one(t_tmp_begin, o_tmp_begin, factorizations) == 0:
+                        val = lt_one(t_tmp_begin, o_tmp_begin, factorizations)
+                        if val == 0:
                             return True
+                        elif val == 1:
+                            return False
                     elif t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
-                        if lt_one(t_tmp_end, o_tmp_end, factorizations) == 0:
+                        val = lt_one(t_tmp_end, o_tmp_end, factorizations)
+                        if val == 0:
                             return True
+                        elif val == 1:
+                            return False
 
     return False
 
@@ -509,32 +512,30 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         all_factorizations += [sorted(new)]
         finished |= new_finished
 
+        #pdb.set_trace()
         if new_finished:
+            e = copy.deepcopy(all_factorizations)
             for x in generate_all_possible_lists(all_factorizations):
-                all_possible = True
+                possible = True
                 for y in new_finished:
                     y = list(y)
-
                     possible_z, idx = calculated_Z(y, primes, x)
                     if y not in x:
-                        all_possible = False
+                        possible = False
                         break
                     if possible_z != Z(x.index(y)+2):
-                        all_possible = False
+                        possible = False
                         break
-                if all_possible:
-                    possible += [copy.copy(x)]
+                if possible:
+                    for y in range(0,len(x)):
+                        if x[y] in e[y]:
+                            e[y].remove(x[y])
 
             new_eliminate = []
-            for x in range(0, len(all_factorizations)):
-                 for i in range(0, len(all_factorizations[x])):
-                     found = False
-                     for y in possible:
-                         if all_factorizations[x][i] == y[x]:
-                             found = True
-                     if not found:
-                         new_eliminate += [[x, all_factorizations[x][i]]]
 
+            for x in range(0,len(e)):
+                for y in e[x]:
+                    new_eliminate += [[x, y]]
 
             if new_eliminate:
                 min_ = None
