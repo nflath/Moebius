@@ -10,6 +10,19 @@ from functools import reduce
 def Z(n):
     return len([moebius(x) for x in range(1,n+1) if moebius(x) == 0])
 
+def ZIsPossible(z, m):
+    n = 2
+    z_ = 0
+    n_max = -1
+    while z_ <= z:
+        m_ = moebius(n)
+        z_ = Z(n)
+        if z_ == z and m_ == m:
+            n_max = n
+        n += 1
+    return n_max
+
+
 # Question: Given 'finished', what Z-values can we calculate?
 
 # First step:  Find the largest prime 'p' for which we know p*p > factors.
@@ -51,12 +64,18 @@ def calculated_Z(f, primes, factorizations):
     max_idx = 0
     in_ = set()
     for p in primes:
-        if [p,p] == f or lt_one([p,p], f, factorizations):
+        val = ord([p,p], f, factorizations)
+        if val == 99:
+            return -1, -1
+        if [p,p] == f or val  <= 0:
             in_.add((p,p))
         else:
             break
         for x in factorizations:
-            if sorted([p,p]+x) == f or lt_one(sorted([p,p]+x), f, factorizations):
+            val = ord(sorted([p,p]+x), f, factorizations)
+            if val == 99:
+                return -1, -1
+            if sorted([p,p]+x) == f or val <= 0:
                 max_idx = max(max_idx, factorizations.index(x))
                 in_.add(tuple(sorted([p,p]+x)))
             else:
@@ -105,8 +124,8 @@ def partition(s, factorizations):
             if y in r:
                 continue
 
-            if not lt_one(x, y, factorizations) and \
-              not lt_one(y, x, factorizations):
+            if ord(x, y, factorizations) != -1 and \
+              ord(y, x, factorizations) != -1:
                 r_ += [y]
         r += [r_]
     return r
@@ -129,24 +148,25 @@ def simplify(this, other):
     return this, other
 
 
-def lt_no_permutation(t, o, factorizations):
+def ord_no_permutation(t, o, factorizations):
     """Returns whether we can show t < o or not just based on the given factorization.
 
     Will simplify t and o, but not go through all comparison of factors
 
-    Returns 0 if t < o, 1 if o > t, -1 if we don't know.
+    Returns -1 if t < o, 0 if t == 0, 1 if o > t, 99 if unknown
+
     """
 
-    t, o = simplify(t, o)
+    # t, o = simplify(t, o)
 
     # IF either t or o are eliminated, one is larger than the other(or both
     # are equal).
     if not t and not o:
-        return 1
-    if not t:
         return 0
-    if not o:
+    if not t:
         return -1
+    if not o:
+        return 1
 
     t_index = None
     o_index = None
@@ -166,16 +186,16 @@ def lt_no_permutation(t, o, factorizations):
 
     if t_found and not o_found:
         # If t is in the list and o is not, t < o
-        return 0
+        return -1
     if o_found and not t_found:
         return 1
     if t_found and t_index < o_index:
         # If both are found and t is earlier than o, t < o
-        return 0
+        return -1
     if o_found and o_index < t_index:
         return 1
 
-    return -1
+    return 99
 
 
 def lt(this, other, factorizations):
@@ -201,7 +221,7 @@ def lt(this, other, factorizations):
             for this_element in this:
                 if lt_:
                     break
-                if lt_one(this_element, other_element, factorizations):
+                if ord(this_element, other_element, factorizations) == -1:
                     lt_ = True
                     break
         if not lt_:
@@ -210,24 +230,30 @@ def lt(this, other, factorizations):
     return True
 
 
-def lt_one(this, other, factorizations):
+def ord(this, other, factorizations):
     """Returns whether this < other in a more complicated way.
 
-    Check each permutation and 2-way split of this and other to try and find one where both parts of this are less than the parts of other.
+    Check each permutation and 2-way split of this and other to try and
+    find one where both parts of this are less than the parts of
+    other.
+
+    Returns -1 if t < 0, 0 if t == 0, 1 if t > o, 99 if unknown
     """
     t, o = simplify(this, other)
     if not t and o:
-        return True
+        return -1
     elif not o and t:
-        return False
+        return 1
+    if not t and not o:
+        return 0
 
     # FixMe: We only need sorted combinations.  So this duplicates work.
-    # FixMe: Can we potentially not call simplify() in the lt_no_permutation?
+    # FixMe: Can we potentially not call simplify() in the ordno_permutation?
     # They should already be simplified.
     # FixMe: This is going to have to change to return lt, gt, eq, or unknown
 
     for t_begin_len in range(0, len(t)):
-        for o_begin_len in range(0, len(o)):
+        for o_begin_len in range(0, int(len(o))):
             for t_tmp_begin in itertools.combinations(t, t_begin_len):
                 for o_tmp_begin in itertools.combinations(o, o_begin_len):
 
@@ -243,27 +269,55 @@ def lt_one(this, other, factorizations):
                         o_tmp_end.remove(x)
 
                     if t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
-                        begin_val = lt_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
-                        end_val = lt_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if begin_val == 0 and end_val == 0:
-                            return True
+                        begin_val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
+                        end_val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
+                        if begin_val == -1 and end_val == -1:
+                            return -1
                         elif begin_val == 1 and end_val == 1:
-                            return False
+                            return 1
                     elif t_tmp_begin and o_tmp_begin and not t_tmp_end and not o_tmp_end:
-                        val = lt_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
-                        if val == 0:
-                            return True
+                        val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
+                        if val == -1:
+                            return -1
                         elif val == 1:
-                            return False
+                            return 1
                     elif t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
-                        val = lt_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if val == 0:
-                            return True
+                        val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
+                        if val == -1:
+                            return -1
                         elif val == 1:
-                            return False
+                            return 1
 
-    return False
+    return 99
 
+
+class memoized(object):
+   '''Decorator. Caches a function's return value each time it is called.
+   If called later with the same arguments, the cached value is returned
+   (not reevaluated).
+   '''
+   def __init__(self, func):
+      self.func = func
+      self.cache = {}
+   def __call__(self, *args):
+      if not isinstance(args, collections.Hashable):
+         # uncacheable. a list, for instance.
+         # better to not cache than blow up.
+         return self.func(*args)
+      if args in self.cache:
+         return self.cache[args]
+      else:
+         value = self.func(*args)
+         self.cache[args] = value
+         return value
+   def __repr__(self):
+      '''Return the function's docstring.'''
+      return self.func.__doc__
+   def __get__(self, obj, objtype):
+      '''Support instance methods.'''
+      return functools.partial(self.__call__, obj)
+
+@memoized
 def factorize(n):
     """Returns the factorization of n"""
 
@@ -276,7 +330,7 @@ def factorize(n):
     assert n == 1
     return factors
 
-
+@memoized
 def moebius(n):
     """Returns the moebius value of n
 
@@ -330,7 +384,7 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest):
                 return [], smallest, True
 
     for i in factorizations:
-        if lt_one(possibility,i,factorizations):
+        if ord(possibility,i,factorizations) == -1:
             return [], smallest, False
 
     return [possibility], smallest, True
@@ -434,7 +488,7 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest_factorization_id
                 return [], idx__, True
 
         for i in factorizations:
-            if lt_one(possibility,i,factorizations):
+            if ord(possibility,i,factorizations) == -1:
                 return [], idx__, False
 
     return possibility, idx__, True
@@ -475,6 +529,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
     """ Generates the list of factorization possibilities up to max_n """
     finished = set()
     outstanding = set()
+    z_calculated = set()
     eliminate = collections.defaultdict(list)
 
     n = start_n
@@ -528,7 +583,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     if not new_:
                         outstanding_count[f] += 1
                     for y in new_:
-                        if lt_one(list(f),y,factorizations):
+                        if ord(list(f),y,factorizations) == -1:
                             outstanding_count[x] += 1
 
             for x in new_:
@@ -538,7 +593,6 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     new += [x]
 
         # Update the finished and outstanding sets.
-
         new_outstanding = set()
         new_finished = set()
         for x in outstanding:
@@ -558,7 +612,42 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         all_factorizations += [sorted(new)]
         finished |= new_finished
 
-        if new_finished:
+
+        # Working
+        all_confusions = set()
+        for x in all_factorizations:
+            if len(x) == 1:
+                continue
+            else:
+                allFinished = True
+                factors = []
+                for y in x:
+                    if tuple(y) not in finished:
+                        allFinished = False
+                        break
+                    else:
+                        factors += y
+                if allFinished:
+                    all_confusions.add(tuple(sorted(tuple(factors))))
+
+        all_potential_useful_Z = set()
+        for x in all_confusions:
+            for y in range(1,len(x)):
+                for z in itertools.combinations(x,y):
+                    if z not in z_calculated:
+                        all_potential_useful_Z.add(z)
+
+        for x in generate_all_possible_lists(all_factorizations):
+            primes = [x[0] for x in factorizations if len(x) == 1]
+            all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
+            for y in all_potential_useful_Z2:
+                possible_z, idx = calculated_Z(list(y), primes, x)
+                if possible_z == -1:
+                    #if n == 22 and list(y)==[2,3,7]: pdb.set_trace()
+                    possible_z, idx = calculated_Z(list(y), primes, x)
+                    all_potential_useful_Z.remove(y)
+
+        if new_finished or all_potential_useful_Z:
             # If we've finished anything new, go ahead and try to eliminate
             # possibilities based on Z.
 
@@ -570,22 +659,45 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 # Z(finished) and ensure that the Z value matches what we
                 # expect.
                 possible = True
-                for y in new_finished:
+                primes = [x[0] for x in factorizations if len(x) == 1]
+
+#                if x == [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23]]:
+                    #pdb.set_trace()
+
+                for y in new_finished | all_potential_useful_Z:
+                    moebius_of_y = 0
+                    if len(set(y)) == len(y):
+                        moebius_of_y = math.pow(-1,len(y))
                     y = list(y)
                     possible_z, idx = calculated_Z(y, primes, x)
-                    if y not in x:
+                    if possible_z == -1:
+                        continue
+                        # This may not be good; don't use this information
+                        assert tuple(y) not in new_finished
+                    if tuple(y) not in new_finished and ZIsPossible(
+                            possible_z,
+                            moebius_of_y) < len(x):
+                        ZIsPossible(
+                            possible_z,
+                            moebius_of_y)
                         possible = False
                         break
-                    if possible_z != Z(x.index(y)+2):
+                    if tuple(y) in new_finished and y not in x:
+                        possible = False
+                        break
+                    if y in x and possible_z != Z(x.index(y)+2):
                         possible = False
                         break
                 if possible:
                     # This is a possible factorization; make sure we're not
                     # eliminating anything in it.
+                    #if n == 23: pdb.set_trace()
                     for y in range(0,len(x)):
                         if x[y] in e[y]:
                             e[y].remove(x[y])
 
+            z_calculated |= new_finished
+            z_calculated |= all_potential_useful_Z
             new_eliminate = []
 
             for x in range(0,len(e)):
@@ -604,22 +716,27 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     min_ = min(min_,x[0])
                     if [x[1]] not in eliminate[x[0]]:
                         eliminate[x[0]] += [x[1]]
+                print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+3)
                 n = min_+3
                 all_factorizations = all_factorizations[:min_+1]
+
+
+                finished = set()
+                outstanding = set()
+
                 continue
         n = n + 1
+
     return all_factorizations
 
 if __name__ == "__main__":
     def main():
         # FixMe: Add tests
 
-
         f = generate_factorization_possibilities(int(sys.argv[1]))
         print(1, "[[1]]")
         for n in range(0, len(f)):
             print(n + 2, f[n])
-        #print(f)
 
-    cProfile.run('main()')
+    cProfile.run('main()',sort='tottime')
     #main()
