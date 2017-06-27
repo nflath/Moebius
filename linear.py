@@ -71,19 +71,20 @@ def calculated_Z(f, primes, factorizations):
             in_.add((p,p))
         else:
             break
-        for x in factorizations:
+        for x_idx in range(0,len(factorizations)):
+            x = factorizations[x_idx]
             val = ord(sorted([p,p]+x), f, factorizations)
             if val == 99:
                 return -1, -1
             if sorted([p,p]+x) == f or val <= 0:
-                max_idx = max(max_idx, factorizations.index(x))
+                max_idx = max(max_idx, x_idx)
                 in_.add(tuple(sorted([p,p]+x)))
             else:
                 break
     return len(in_), max_idx
 
 
-def generate_all_possible_lists(lst, idx=0, retn=[]):
+def generate_all_possible_lists(lst, finished, idx=0, retn=[]):
     """ Yields each possible list, where each index in lst is a list of possibilities.
 
     The same possibility cannot be chose more than once."""
@@ -91,16 +92,20 @@ def generate_all_possible_lists(lst, idx=0, retn=[]):
         yield lst
     elif not retn:
         retn = copy.deepcopy(lst)
-        for y in generate_all_possible_lists(lst, 0, retn):
+        for y in generate_all_possible_lists(lst, finished, 0, retn):
             yield y
     elif idx == len(lst):
+        for x in finished:
+            if list(x) not in retn:
+                return
         yield retn
     else:
         for x in lst[idx]:
             if x in retn[:idx]:
                 continue
             retn[idx] = x
-            for y in generate_all_possible_lists(lst, idx + 1, retn):
+            for y in generate_all_possible_lists(lst, finished, idx + 1, retn):
+
                 yield y
 
 
@@ -131,21 +136,30 @@ def partition(s, factorizations):
     return r
 
 
+
 def simplify(this, other):
     """ Remove all common factors in this and other.
 
     For example, (2,2,2,2) and (2,2,5) simplifies to (2,2) and (5)."""
-    i = 0
-    while i < len(this):
-        changed = False
-        while i < len(this) and this[i] in other:
-            changed = True
-            index = other.index(this[i])
-            this = this[:i] + this[i + 1:]
-            other = other[:index] + other[index + 1:]
-        if not changed:
-            i = i + 1
-    return this, other
+    t_i = 0
+    o_i = 0
+    t = []
+    o = []
+    while(t_i < len(this) and o_i < len(other)):
+        if this[t_i] < other[o_i]:
+            t.append(this[t_i])
+            t_i += 1
+        elif this[t_i] > other[o_i]:
+            o.append(other[o_i])
+            o_i += 1
+        elif(this[t_i] == other[o_i]):
+            t_i += 1
+            o_i += 1
+    if t_i < len(this):
+        t += this[t_i:]
+    if o_i < len(other):
+        o += other[o_i:]
+    return t, o
 
 
 def ord_no_permutation(t, o, factorizations):
@@ -271,7 +285,9 @@ def ord(this, other, factorizations):
                     if t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
                         begin_val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
                         end_val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if begin_val == -1 and end_val == -1:
+                        if (begin_val == -1 and end_val == -1) or \
+                          (begin_val == -1 and end_val == 0) or \
+                          (begin_val == 0 and end_val == -1):
                             return -1
                         elif begin_val == 1 and end_val == 1:
                             return 1
@@ -370,11 +386,17 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest):
         return [], smallest, False
 
 
+    primes_finished = set()
     for i in range(0, len(possibility)):
         # Go through all factorizations before 'potential' and ensure that no
         # factorization * p is lower than potential * p but doesn't exist.
-        other = possibility[:i] + possibility[i + 1:]
         prime = possibility[i]
+        if prime in primes_finished:
+            continue
+        primes_finished.add(prime)
+
+        other = possibility[:i] + possibility[i + 1:]
+
 
         if other not in factorizations:
             return [], smallest, True
@@ -452,7 +474,7 @@ def new_unique_prime_factorizations(n, start_length, primes, factorizations):
     return result
 
 
-def one_repeated_prime_factor(n, factorizations, p, f, smallest_factorization_idx):
+def one_repeated_prime_factor(n, factorizations, p, f, smallest):
     """ Returns the possible factorization using the given prime and intermediate factorization.
 
     """
@@ -465,33 +487,39 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest_factorization_id
 
         # FixMe: If this is not in the results list, we should update
         # smallest_factorization_idx and return, right?
-        return [], smallest_factorization_idx, False
+        return [], smallest, False
 
     # Just find what index f is in the factorizations list
-    idx__ = factorizations.index(f)
+    #idx__ = factorizations.index(f)
 
     if possibility in factorizations:
         # We've already found this.  Keep searching.
-        return [], smallest_factorization_idx, False
+        return [], smallest, False
 
+    primes_finished = set()
     for i in range(0, len(possibility)):
         # Go through all factorizations before 'potential' and ensure that no
         # factorization * p is lower than potential * p but doesn't exist.
-        other = possibility[:i] + possibility[i + 1:]
         prime = possibility[i]
+        if prime in primes_finished:
+
+            continue
+        primes_finished.add(prime)
+        other = possibility[:i] + possibility[i + 1:]
+
 
         if other not in factorizations:
-            return [], idx__, True
+            return [], smallest, True
 
         for i in range(0, factorizations.index(other)):
             if sorted([prime] + factorizations[i]) not in factorizations:
-                return [], idx__, True
+                return [], smallest,  True
 
         for i in factorizations:
             if ord(possibility,i,factorizations) == -1:
-                return [], idx__, False
+                return [], smallest, False
 
-    return possibility, idx__, True
+    return possibility, f, True
 
 
 def new_repeated_prime_factorizations(n, primes, factorizations):
@@ -504,17 +532,17 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
     """
 
     r = []
-    smallest_factorization_idx = None
+    smallest = None
 
     for p in primes:
         for f in factorizations:
             break_ = False
 
-            if smallest_factorization_idx is not None and f == factorizations[smallest_factorization_idx]:
+            if smallest is not None and f == smallest:
                 break
 
-            r_, smallest_factorization_idx, break_ = one_repeated_prime_factor(
-                n, factorizations, p, f, smallest_factorization_idx)
+            r_, smallest, break_ = one_repeated_prime_factor(
+                n, factorizations, p, f, smallest)
 
             if r_ and r_ not in r:
                 r += [r_]
@@ -539,7 +567,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         possible = []
         outstanding_count = collections.defaultdict(lambda : 0)
         total = 0
-        for factorizations in generate_all_possible_lists(all_factorizations):
+        for factorizations in generate_all_possible_lists(all_factorizations,finished):
             # Attempt every possible factorization and generate all possibilities
             total += 1
 
@@ -637,7 +665,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     if z not in z_calculated:
                         all_potential_useful_Z.add(z)
 
-        for x in generate_all_possible_lists(all_factorizations):
+        for x in generate_all_possible_lists(all_factorizations,finished):
             primes = [x[0] for x in factorizations if len(x) == 1]
             all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
             for y in all_potential_useful_Z2:
@@ -654,12 +682,12 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
             e = copy.deepcopy(all_factorizations)
             # List of impossible possibilities
 
-            for x in generate_all_possible_lists(all_factorizations):
+            for x in generate_all_possible_lists(all_factorizations,finished):
                 # For every possible list of factorizations, calculated
                 # Z(finished) and ensure that the Z value matches what we
                 # expect.
                 possible = True
-                primes = [x[0] for x in factorizations if len(x) == 1]
+                primes = [x[0] for x in x if len(x) == 1]
 
 #                if x == [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23]]:
                     #pdb.set_trace()
