@@ -489,14 +489,30 @@ def prune_elements_lt(factorizations, factorization):
             keep += [factorizations[x]]
     return keep
 
+def generate_possibilities_for_factorization(n, m, primes, factorizations):
+    if m == -1:
+        return new_unique_prime_factorizations(
+            n, 1, primes, factorizations)
+    elif m == 0:
+        return new_repeated_prime_factorizations(
+            n,
+            primes,
+            factorizations)
+    elif m == 1:
+        return new_unique_prime_factorizations(
+            n, 2, primes, factorizations)
+    else:
+        assert False
+
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
     """ Generates the list of factorization possibilities up to max_n """
+    global logger
     finished = set()
     outstanding = set()
     z_calculated = set()
     eliminate = collections.defaultdict(list)
-    global logger
 
+    logger.info("Start")
 
     n = start_n
     while n <= max_n:
@@ -506,27 +522,14 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         possible = []
         outstanding_count = collections.defaultdict(lambda : 0)
         total = 0
+        failed = 0
+        m = moebius(n)
         for factorizations in generate_all_possible_lists(all_factorizations,finished):
             # Attempt every possible factorization and generate all possibilities
             total += 1
-
             primes = [x[0] for x in factorizations if len(x) == 1]
-            m = moebius(n)
-            new_ = []
-            if m == -1:
-                new_ = new_unique_prime_factorizations(
-                    n, 1, primes, factorizations)
-            elif m == 0:
-                new_ = new_repeated_prime_factorizations(
-                    n,
-                    primes,
-                    factorizations)
-            elif m == 1:
-                new_ = new_unique_prime_factorizations(
-                    n, 2, primes, factorizations)
-            else:
-                assert False
 
+            new_ = generate_possibilities_for_factorization(n,m,primes,factorizations)
             new_ = prune_elements_lt(new_, factorizations)
 
             for f in outstanding:
@@ -540,6 +543,8 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     outstanding_count[f] += 1
                 else:
                     if not new_:
+                        # Invalid generation - can we figure out how to skip it next time?
+                        failed += 1
                         outstanding_count[f] += 1
                     for y in new_:
                         if ord(list(f),y,factorizations) == -1:
@@ -551,6 +556,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 if x not in new and x not in eliminate[n-2]:
                     new += [x]
         logger.debug("Initial possibilities: %s"%(str(new)))
+        logger.debug("total: %d failed: %d"%(total,failed))
 
         # Update the finished and outstanding sets.
         new_outstanding = set()
