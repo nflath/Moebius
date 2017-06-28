@@ -17,38 +17,7 @@ ch.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
-# add the handlers to the logger
 logger.addHandler(fh)
-
-# Question: Given 'finished', what Z-values can we calculate?
-
-# First step:  Find the largest prime 'p' for which we know p*p > factors.
-#  If we can't prove any, we can't solve it yet.
-
-#  E.G. for 2 * 3 * 5, we need to be able to show 7 * 7 > 2 * 3 * 5.  As long
-#  as we've factored up to 7, we're good here.
-
-# For each prime lower than that, we need to be able to show some p * p * a > f.
-# So we need to know [5 * 5] * a > 2 * 3 * 5,
-#                    [3 * 3] * b > 2 * 3 * 5
-#                    [2 * 2] * c > 2 * 3 * 5
-
-# g = simplify(f)
-#                    5 * a > 2 * 3
-#                    3 * b > 2 * 5
-#                    2 * c > 3 * 5
-
-# For each p < max_p : we need to be able to show 'a' s.t
-#          simplify[p*p*a] > simplify[f]
-
-# So we are good as long as we have 'finished' max(simplify([p,p],f)) for all p
-# < max_p (and we can find some max_p).
-
-# So: Given 'finished', 'already_evaluated', 'primes' (where we've isolated all the primes... :()
-# How do we determine what we can do?
-#   - Anything in finished not in already_evaluated
-#
-# For each prime, keep track when we 'finish' a possibility for a * p * p.
 
 
 def calculated_Z(f, primes, factorizations):
