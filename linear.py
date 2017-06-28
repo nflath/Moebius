@@ -33,7 +33,7 @@ def calculated_Z(f, primes, factorizations):
         val = ord([p,p], f, factorizations)
         if val == 99:
             return -1, -1
-        if [p,p] == f or val  <= 0:
+        if val  <= 0:
             in_.add((p,p))
         else:
             break
@@ -42,7 +42,7 @@ def calculated_Z(f, primes, factorizations):
             val = ord(sorted([p,p]+x), f, factorizations)
             if val == 99:
                 return -1, -1
-            if sorted([p,p]+x) == f or val <= 0:
+            if val <= 0:
                 max_idx = max(max_idx, x_idx)
                 in_.add(tuple(sorted([p,p]+x)))
             else:
