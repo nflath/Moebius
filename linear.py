@@ -106,34 +106,6 @@ def generate_all_possible_lists(lst, finished, idx=0, retn=[]):
                 yield y
 
 
-def partition(s, factorizations):
-    """Partitions the set of factorizations 's' into  equal groupings.
-
-    For example, [2,2,2,3] and [3,3,3] will be grouped together while
-    [2,2,2] and [3,3] have not been disambiguated.  An 'equal group' is
-    one where no element is less than another element.
-    """
-
-    r = []
-    for x in s:
-        if x in r:
-            continue
-        r_ = [x]
-        for y in s:
-            if x == y:
-                continue
-
-            if y in r:
-                continue
-
-            if ord(x, y, factorizations) != -1 and \
-              ord(y, x, factorizations) != -1:
-                r_ += [y]
-        r += [r_]
-    return r
-
-
-
 def simplify(this, other):
     """ Remove all common factors in this and other.
 
@@ -207,38 +179,6 @@ def ord_no_permutation(t, o, factorizations):
         return 1
 
     return 99
-
-
-def lt(this, other, factorizations):
-    """Returns if we can show this < every element in other (aside itself).
-
-    This is a set of possible factorizations, and other is a set of
-    sets.  We need to make sure that, for each set in other, at least
-    one factorization of this is less than one of the factorizations in
-    other.
-    """
-
-    # FixMe: Is this correct? Or should *all* elements be < all elements in other?
-
-    for other_set in other:
-
-        if other_set is this:
-            continue
-
-        lt_ = False
-        for other_element in other_set:
-            if lt_:
-                break;
-            for this_element in this:
-                if lt_:
-                    break
-                if ord(this_element, other_element, factorizations) == -1:
-                    lt_ = True
-                    break
-        if not lt_:
-            return False
-
-    return True
 
 
 def ord(this, other, factorizations):
