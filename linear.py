@@ -588,7 +588,47 @@ def update_cache(cache, all_factorizations, finished, old_calls):
         elif y_last_idx < x_first_idx and y in finished:
             cache[tuple(x),tuple(y)] = 1
 
+def all_potentially_useful_z(all_factorizations, z_calculated, blocked_potential_useful_Z,finished):
+    all_confusions = set()
+    for x in all_factorizations:
+        if len(x) == 1:
+            continue
+        else:
+            allFinished = True
+            factors = []
+            for y in x:
+                if tuple(y) not in finished:
+                    allFinished = False
+                    break
+                else:
+                    factors += y
+            if allFinished:
+                all_confusions.add(tuple(sorted(tuple(factors))))
 
+    all_potential_useful_Z = set()
+    for x in all_confusions:
+        for y in range(1,len(x)):
+            for z in itertools.combinations(x,y):
+                if z not in z_calculated:
+                    all_potential_useful_Z.add(z)
+
+
+    for x in generate_all_possible_lists(all_factorizations,finished):
+        primes = [x[0] for x in x if len(x) == 1]
+        all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
+        for y in all_potential_useful_Z2:
+
+            if y in blocked_potential_useful_Z:
+              if ord(y, blocked_potential_useful_Z[y][0], blocked_potential_useful_Z[y][1]) == 99:
+                    break
+              del blocked_potential_useful_Z[y]
+
+            possible_z, possibility = calculated_Z(list(y), primes, x)
+            if possible_z == -1:
+                all_potential_useful_Z.remove(y)
+                blocked_potential_useful_Z[y] = possibility
+
+    return all_potential_useful_Z
 
 
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
@@ -637,7 +677,8 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                         outstanding_count[f] += 1
                     for y in new_:
                         if ord(list(f),y,factorizations) == -1:
-                            outstanding_count[x] += 1
+                            outstanding_count[f] += 1
+                            break
 
             for x in new_:
                 # Add all the new factorizations that remain that we have not
@@ -673,46 +714,25 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         global cache
         update_cache(cache, all_factorizations, finished, old_calls)
+        all_potential_useful_Z = all_potentially_useful_z(all_factorizations,
+                                                          z_calculated,
+                                                          blocked_potential_useful_Z,
+                                                          finished)
 
-        all_confusions = set()
-        for x in all_factorizations:
-            if len(x) == 1:
-                continue
-            else:
-                allFinished = True
-                factors = []
-                for y in x:
-                    if tuple(y) not in finished:
-                        allFinished = False
-                        break
-                    else:
-                        factors += y
-                if allFinished:
-                    all_confusions.add(tuple(sorted(tuple(factors))))
+        # for x in generate_all_possible_lists(all_factorizations,finished):
+        #     primes = [x[0] for x in factorizations if len(x) == 1]
+        #     all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
+        #     for y in all_potential_useful_Z2:
 
-        all_potential_useful_Z = set()
-        for x in all_confusions:
-            for y in range(1,len(x)):
-                for z in itertools.combinations(x,y):
-                    if z not in z_calculated:
-                        all_potential_useful_Z.add(z)
+        #         if y in blocked_potential_useful_Z:
+        #           if ord(y, blocked_potential_useful_Z[y][0], blocked_potential_useful_Z[y][1]) == 99:
+        #                 break
+        #           del blocked_potential_useful_Z[y]
 
-
-
-        for x in generate_all_possible_lists(all_factorizations,finished):
-            primes = [x[0] for x in factorizations if len(x) == 1]
-            all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
-            for y in all_potential_useful_Z2:
-
-                if y in blocked_potential_useful_Z:
-                  if ord(y, blocked_potential_useful_Z[y][0], blocked_potential_useful_Z[y][1]) == 99:
-                        break
-                  del blocked_potential_useful_Z[y]
-
-                possible_z, possibility = calculated_Z(list(y), primes, x)
-                if possible_z == -1:
-                    all_potential_useful_Z.remove(y)
-                    blocked_potential_useful_Z[y] = possibility
+        #         possible_z, possibility = calculated_Z(list(y), primes, x)
+        #         if possible_z == -1:
+        #             all_potential_useful_Z.remove(y)
+        #             blocked_potential_useful_Z[y] = possibility
 
 
         logger.debug("new_finished: %s"%new_finished)
@@ -788,14 +808,12 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     min_ = min(min_,x[0])
                     if [x[1]] not in eliminate[x[0]]:
                         eliminate[x[0]] += [x[1]]
+                logger.log
                 print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
                 n = min_+2
                 all_factorizations = all_factorizations[:min_]
 
                 finished = finished_for_n[n]#set()
-
-                #cache = {}
-                #update_cache(cache, all_factorizations, finished, old_calls)
                 outstanding = set()
 
                 continue
@@ -812,5 +830,12 @@ if __name__ == "__main__":
 
         global cache_hits, ord_calls
         print(cache_hits, ord_calls)
+        print(Z(56))
 
     main()
+
+all_factorizations = [[[2]], [[3]], [[2, 2]], [[5]], [[2, 3]], [[7]], [[2, 2, 2]], [[3, 3]], [[2, 5]], [[11]], [[2, 2, 3]], [[13]], [[2, 7]], [[3, 5]], [[2, 2, 2, 2]], [[17]], [[2, 3, 3]], [[19]], [[2, 2, 5]], [[3, 7]], [[2, 11]], [[23]], [[5, 5]], [[2, 2, 2, 3]], [[2, 13]], [[3, 3, 3]], [[2, 2, 7]], [[29]], [[2, 3, 5], [30]], [[2, 3, 5], [31]], [[2, 2, 2, 2, 2]], [[2, 17], [3, 11], [5, 7]], [[2, 17], [3, 11], [5, 7]], [[2, 17], [3, 11], [5, 7]], [[2, 2, 3, 3]], [[37]], [[2, 19], [3, 13]], [[2, 19], [3, 13]], [[2, 2, 2, 5]], [[2, 3, 7], [41]], [[2, 3, 7], [42]], [[2, 3, 7], [43]], [[2, 2, 11], [3, 3, 5], [7, 7]], [[2, 2, 11], [3, 3, 5], [7, 7]], [[2, 23]], [[47]], [[2, 5, 5], [3, 3, 5], [7, 7]], [[2, 5, 5], [7, 7]], [[2, 2, 13]], [[3, 17]]]
+finished = {(2, 2, 5), (23,), (11,), (3, 7), (2, 5), (13,), (3, 3), (2, 2, 2, 2), (2, 3, 3), (3,), (5,), (2, 2), (7,), (2, 3), (2, 2, 3), (3, 5), (2, 7), (2, 2, 2), (2,), (2, 11), (17,), (19,)}
+outstanding = ()
+
+n = 24
