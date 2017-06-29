@@ -719,22 +719,6 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                                                           blocked_potential_useful_Z,
                                                           finished)
 
-        # for x in generate_all_possible_lists(all_factorizations,finished):
-        #     primes = [x[0] for x in factorizations if len(x) == 1]
-        #     all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
-        #     for y in all_potential_useful_Z2:
-
-        #         if y in blocked_potential_useful_Z:
-        #           if ord(y, blocked_potential_useful_Z[y][0], blocked_potential_useful_Z[y][1]) == 99:
-        #                 break
-        #           del blocked_potential_useful_Z[y]
-
-        #         possible_z, possibility = calculated_Z(list(y), primes, x)
-        #         if possible_z == -1:
-        #             all_potential_useful_Z.remove(y)
-        #             blocked_potential_useful_Z[y] = possibility
-
-
         logger.debug("new_finished: %s"%new_finished)
         logger.debug("all_potentially_useful_z: %s"%all_potential_useful_Z)
         it_set = new_finished | all_potential_useful_Z
