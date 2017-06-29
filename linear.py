@@ -7,6 +7,11 @@ import sys
 import itertools
 from functools import reduce
 
+# Naming conventions:
+# all_factorizations is the list where all_factorizations[n] contains all possibilities
+# factorizations is one set of factorizations where factorizations[n] contains one possibility
+# f is a single factorization
+
 import logging
 logger = logging.getLogger('Moebius')
 logger.setLevel(logging.DEBUG)
@@ -32,22 +37,23 @@ def calculated_Z(f, primes, factorizations):
     for p in primes:
         val = ord([p,p], f, factorizations)
         if val == 99:
-            return -1, -1
+            return -1, ([p,p],factorizations)
         if val  <= 0:
             in_.add((p,p))
         else:
             break
         for x_idx in range(0,len(factorizations)):
             x = factorizations[x_idx]
-            val = ord(sorted([p,p]+x), f, factorizations)
+            possibility = sorted([p,p]+x)
+            val = ord(possibility, f, factorizations)
             if val == 99:
-                return -1, -1
+                return -1, (possibility, factorizations)
             if val <= 0:
                 max_idx = max(max_idx, x_idx)
-                in_.add(tuple(sorted([p,p]+x)))
+                in_.add(tuple(possibility))
             else:
                 break
-    return len(in_), max_idx
+    return len(in_), None
 
 
 def generate_all_possible_lists(lst, finished, idx=0, retn=[]):
@@ -108,10 +114,7 @@ def ord_no_permutation(t, o, factorizations):
     Returns -1 if t < o, 0 if t == 0, 1 if o > t, 99 if unknown
 
     """
-
-    # t, o = simplify(t, o)
-
-    # IF either t or o are eliminated, one is larger than the other(or both
+    # If either t or o are eliminated, one is larger than the other(or both
     # are equal).
     if not t and not o:
         return 0
@@ -122,6 +125,9 @@ def ord_no_permutation(t, o, factorizations):
 
     t_index = None
     o_index = None
+    global cache
+    if (tuple(t), tuple(o)) in cache:
+        return cache[tuple(t), tuple(o)]
 
     try:
         t_index = factorizations.index(t)
@@ -150,6 +156,11 @@ def ord_no_permutation(t, o, factorizations):
     return 99
 
 
+calls = collections.defaultdict(lambda : 0)
+cache = {}
+cache_hits = 0
+ord_calls = 0
+
 def ord(this, other, factorizations):
     """Returns whether this < other in a more complicated way.
 
@@ -159,7 +170,15 @@ def ord(this, other, factorizations):
 
     Returns -1 if t < 0, 0 if t == 0, 1 if t > o, 99 if unknown
     """
+    global cache, cache_hits, ord_calls, calls
+
+    ord_calls += 1
+    if (tuple(this),tuple(other),) in cache:
+        cache_hits += 1
+        return cache[(tuple(this),tuple(other),)]
+
     t, o = simplify(this, other)
+
     if not t and o:
         return -1
     elif not o and t:
@@ -167,10 +186,11 @@ def ord(this, other, factorizations):
     if not t and not o:
         return 0
 
-    # FixMe: We only need sorted combinations.  So this duplicates work.
-    # FixMe: Can we potentially not call simplify() in the ordno_permutation?
-    # They should already be simplified.
-    # FixMe: This is going to have to change to return lt, gt, eq, or unknown
+    if (tuple(t),tuple(o),) in cache:
+        cache_hits += 1
+        return cache[(tuple(t),tuple(o),)]
+
+    calls[(tuple(t),tuple(o),)] += 1
 
     for t_begin_len in range(0, len(t)):
         for o_begin_len in range(0, int(len(o))):
@@ -188,7 +208,13 @@ def ord(this, other, factorizations):
                     for x in o_tmp_begin:
                         o_tmp_end.remove(x)
 
-                    if t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
+                    if t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
+                        val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
+                        if val == -1:
+                            return -1
+                        elif val == 1:
+                            return 1
+                    elif t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
                         begin_val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
                         end_val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
                         if (begin_val == -1 and end_val == -1) or \
@@ -203,12 +229,7 @@ def ord(this, other, factorizations):
                             return -1
                         elif val == 1:
                             return 1
-                    elif t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
-                        val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if val == -1:
-                            return -1
-                        elif val == 1:
-                            return 1
+
 
     return 99
 
@@ -504,18 +525,86 @@ def generate_possibilities_for_factorization(n, m, primes, factorizations):
     else:
         assert False
 
+def index_recursive(lst, elt, last=False):
+    """Find elt in list of lists lst
+
+    Returns whether or not the element was found, and the index of the
+    list it was found in.  If last is set, returns the last index of the
+    list it was found in.
+    """
+    for l in lst:
+        for e in l:
+            if e == elt:
+                if not last:
+                    return True, lst.index(l)
+                f, i = index_recursive(lst[lst.index(l)+1:],elt,last)
+                if f:
+                    return True, i + lst.index(l) + 1
+                return True, lst.index(l)
+
+    return False, 0
+
+def update_cache(cache, all_factorizations, finished, old_calls):
+    for x in finished:
+        for y in finished:
+            if (tuple(x),tuple(y)) in cache:
+                continue
+            x_found, x_first_idx = index_recursive(all_factorizations,list(x),last=False)
+            x_found, x_last_idx = index_recursive(all_factorizations,list(x),last=True)
+            y_found, y_first_idx = index_recursive(all_factorizations,list(y),last=False)
+            y_found, y_last_idx = index_recursive(all_factorizations,list(y),last=True)
+
+            if x == y:
+                cache[tuple(x),tuple(y)] = 0
+
+            if x_last_idx < y_first_idx:
+                cache[tuple(x),tuple(y)] = -1
+
+            if y_last_idx < x_first_idx:
+                cache[tuple(x),tuple(y)] = 1
+
+    for x, y in old_calls.keys():
+        if (tuple(x),tuple(y)) in cache:
+            continue
+        x_found, x_first_idx = index_recursive(all_factorizations,list(x),last=False)
+        x_found, x_last_idx = index_recursive(all_factorizations,list(x),last=True)
+        y_found, y_first_idx = index_recursive(all_factorizations,list(y),last=False)
+        y_found, y_last_idx = index_recursive(all_factorizations,list(y),last=True)
+
+        if not x_found and not y_found:
+            break
+        elif x == y:
+            cache[tuple(x),tuple(y)] = 0
+
+        elif x_found and not y_found and x in finished:
+            cache[tuple(x),tuple(y)] = -1
+
+        elif y_found and not x_found and y in finished:
+            cache[tuple(x),tuple(y)] = 1
+
+        elif x_last_idx < y_first_idx and x in finished:
+            cache[tuple(x),tuple(y)] = -1
+
+        elif y_last_idx < x_first_idx and y in finished:
+            cache[tuple(x),tuple(y)] = 1
+
+
+
+
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
     """ Generates the list of factorization possibilities up to max_n """
-    global logger
+    global logger, calls
     finished = set()
+    finished_for_n = {}
     outstanding = set()
     z_calculated = set()
     eliminate = collections.defaultdict(list)
-
+    blocked_potential_useful_Z = {}
     logger.info("Start")
 
     n = start_n
     while n <= max_n:
+        finished_for_n[n] = copy.deepcopy(finished)
         logger.info("Processing n=%d"%n)
         new = []
         real_z = Z(n)
@@ -567,6 +656,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
             else:
                 new_outstanding.add(x)
         outstanding = new_outstanding
+
         if len(new)==1:
             new_finished |= set((tuple(new[0]),))
         else:
@@ -577,6 +667,12 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         all_factorizations += [sorted(new)]
         finished |= new_finished
+
+        old_calls = copy.copy(calls)
+        calls.clear()
+
+        global cache
+        update_cache(cache, all_factorizations, finished, old_calls)
 
         all_confusions = set()
         for x in all_factorizations:
@@ -601,13 +697,23 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     if z not in z_calculated:
                         all_potential_useful_Z.add(z)
 
+
+
         for x in generate_all_possible_lists(all_factorizations,finished):
             primes = [x[0] for x in factorizations if len(x) == 1]
             all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
             for y in all_potential_useful_Z2:
-                possible_z, idx = calculated_Z(list(y), primes, x)
+
+                if y in blocked_potential_useful_Z:
+                  if ord(y, blocked_potential_useful_Z[y][0], blocked_potential_useful_Z[y][1]) == 99:
+                        break
+                  del blocked_potential_useful_Z[y]
+
+                possible_z, possibility = calculated_Z(list(y), primes, x)
                 if possible_z == -1:
                     all_potential_useful_Z.remove(y)
+                    blocked_potential_useful_Z[y] = possibility
+
 
         logger.debug("new_finished: %s"%new_finished)
         logger.debug("all_potentially_useful_z: %s"%all_potential_useful_Z)
@@ -658,7 +764,6 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 if possible:
                     # This is a possible factorization; make sure we're not
                     # eliminating anything in it.
-                    #if n == 23: pdb.set_trace()
                     for y in range(0,len(x)):
                         if x[y] in e[y]:
                             e[y].remove(x[y])
@@ -683,12 +788,14 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     min_ = min(min_,x[0])
                     if [x[1]] not in eliminate[x[0]]:
                         eliminate[x[0]] += [x[1]]
-                print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+3)
-                n = min_+3
-                all_factorizations = all_factorizations[:min_+1]
+                print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
+                n = min_+2
+                all_factorizations = all_factorizations[:min_]
 
+                finished = finished_for_n[n]#set()
 
-                finished = set()
+                #cache = {}
+                #update_cache(cache, all_factorizations, finished, old_calls)
                 outstanding = set()
 
                 continue
@@ -698,12 +805,12 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
 if __name__ == "__main__":
     def main():
-        # FixMe: Add tests
-
         f = generate_factorization_possibilities(int(sys.argv[1]))
         print(1, "[[1]]")
         for n in range(0, len(f)):
             print(n + 2, f[n])
 
+        global cache_hits, ord_calls
+        print(cache_hits, ord_calls)
 
     main()
