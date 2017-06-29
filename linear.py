@@ -630,6 +630,48 @@ def all_potentially_useful_z(all_factorizations, z_calculated, blocked_potential
 
     return all_potential_useful_Z
 
+def all_eliminations(all_factorizations, finished, it_set, new_finished):
+    e = copy.deepcopy(all_factorizations)
+    for x in generate_all_possible_lists(all_factorizations,finished):
+        # For every possible list of factorizations, calculated
+        # Z(finished) and ensure that the Z value matches what we
+        # expect.
+        possible = True
+        primes = [x[0] for x in x if len(x) == 1]
+        keep = []
+
+        for y in it_set:
+            moebius_of_y = 0
+            if len(set(y)) == len(y):
+                moebius_of_y = math.pow(-1,len(y))
+            y = list(y)
+            possible_z, idx = calculated_Z(y, primes, x)
+            if possible_z == -1:
+                continue
+                # This may not be good; don't use this information
+            else:
+                keep += [y]
+
+            if tuple(y) in new_finished and y not in x:
+                assert False
+            if tuple(y) not in new_finished and ZIsPossible(
+                    possible_z,
+                    moebius_of_y) < len(x):
+                possible = False
+                break
+            if y in x and possible_z != Z(x.index(y)+2):
+                possible = False
+                break
+
+        it_set = keep
+        if possible:
+            # This is a possible factorization; make sure we're not
+            # eliminating anything in it.
+            for y in range(0,len(x)):
+                if x[y] in e[y]:
+                    e[y].remove(x[y])
+    return e
+
 
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
     """ Generates the list of factorization possibilities up to max_n """
@@ -641,6 +683,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
     eliminate = collections.defaultdict(list)
     blocked_potential_useful_Z = {}
     logger.info("Start")
+    all_factorizations_master = []
 
     n = start_n
     while n <= max_n:
@@ -721,86 +764,39 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         logger.debug("new_finished: %s"%new_finished)
         logger.debug("all_potentially_useful_z: %s"%all_potential_useful_Z)
+
         it_set = new_finished | all_potential_useful_Z
-        if new_finished or all_potential_useful_Z:
-            # If we've finished anything new, go ahead and try to eliminate
-            # possibilities based on Z.
+        e = all_eliminations(all_factorizations, finished, it_set, new_finished)
 
-            e = copy.deepcopy(all_factorizations)
-            # List of impossible possibilities
-            for x in generate_all_possible_lists(all_factorizations,finished):
-                # For every possible list of factorizations, calculated
-                # Z(finished) and ensure that the Z value matches what we
-                # expect.
-                possible = True
-                primes = [x[0] for x in x if len(x) == 1]
-                keep = []
+        z_calculated |= new_finished
+        z_calculated |= all_potential_useful_Z
+        new_eliminate = []
 
-                for y in it_set:#new_finished | all_potential_useful_Z:
-                    moebius_of_y = 0
-                    if len(set(y)) == len(y):
-                        moebius_of_y = math.pow(-1,len(y))
-                    y = list(y)
-                    possible_z, idx = calculated_Z(y, primes, x)
-                    if possible_z == -1:
-                        continue
-                        # This may not be good; don't use this information
-                        assert tuple(y) not in new_finished
-                    else:
-                        keep += [y]
+        for x in range(0,len(e)):
+            for y in e[x]:
+                new_eliminate += [[x, y]]
 
-                    if tuple(y) not in new_finished and ZIsPossible(
-                            possible_z,
-                            moebius_of_y) < len(x):
-                        ZIsPossible(
-                            possible_z,
-                            moebius_of_y)
-                        possible = False
-                        break
-                    if tuple(y) in new_finished and y not in x:
-                        possible = False
-                        break
-                    if y in x and possible_z != Z(x.index(y)+2):
-                        possible = False
-                        break
+        if new_eliminate:
+            # For all of our new elimination, update all_factorizations and
+            # reset to calculate from the lowert point.
 
-                it_set = keep
-                if possible:
-                    # This is a possible factorization; make sure we're not
-                    # eliminating anything in it.
-                    for y in range(0,len(x)):
-                        if x[y] in e[y]:
-                            e[y].remove(x[y])
+            min_ = None
+            for x in new_eliminate:
+                all_factorizations[x[0]].remove(x[1])
+                if not min_:
+                    min_ = x[0]
+                min_ = min(min_,x[0])
+                if [x[1]] not in eliminate[x[0]]:
+                    eliminate[x[0]] += [x[1]]
+            logger.log
+            print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
+            n = min_+2
+            all_factorizations = all_factorizations[:min_]
 
-            z_calculated |= new_finished
-            z_calculated |= all_potential_useful_Z
-            new_eliminate = []
+            finished = finished_for_n[n]#set()
+            outstanding = set()
 
-            for x in range(0,len(e)):
-                for y in e[x]:
-                    new_eliminate += [[x, y]]
-
-            if new_eliminate:
-                # For all of our new elimination, update all_factorizations and
-                # reset to calculate from the lowert point.
-
-                min_ = None
-                for x in new_eliminate:
-                    all_factorizations[x[0]].remove(x[1])
-                    if not min_:
-                        min_ = x[0]
-                    min_ = min(min_,x[0])
-                    if [x[1]] not in eliminate[x[0]]:
-                        eliminate[x[0]] += [x[1]]
-                logger.log
-                print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
-                n = min_+2
-                all_factorizations = all_factorizations[:min_]
-
-                finished = finished_for_n[n]#set()
-                outstanding = set()
-
-                continue
+            continue
         n = n + 1
 
     return all_factorizations
