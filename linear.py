@@ -24,6 +24,9 @@ fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 logger.addHandler(fh)
 
+def tupletized(l):
+    return tuple([tuple(x) for x in l])
+
 
 def calculated_Z(f, primes, factorizations):
     """Calculates Z(f).
@@ -77,7 +80,6 @@ def generate_all_possible_lists(lst, finished, idx=0, retn=[]):
                 continue
             retn[idx] = x
             for y in generate_all_possible_lists(lst, finished, idx + 1, retn):
-
                 yield y
 
 
@@ -355,6 +357,7 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest):
     return [possibility], smallest, True
 
 
+new_unique_prime_factorizations_for_length_cache = {}
 def new_unique_prime_factorizations_for_length(n, length, primes, factorizations):
     """Return all potential prime factorizations for n of the given length.
 
@@ -464,7 +467,7 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest):
     return possibility, f, True
 
 
-
+new_repeated_prime_factorizations_cache = {}
 def new_repeated_prime_factorizations(n, primes, factorizations):
     """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
 
@@ -475,13 +478,24 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
     """
     r = []
     smallest = None
+    cached_starts = {}
+    tpl = tupletized(factorizations)
+    if tpl[:-1] in new_repeated_prime_factorizations_cache:
+        cached_starts = new_repeated_prime_factorizations_cache[tpl[:-1]]
+    new_cached_starts = {}
+
     for p in primes:
 
         start = 0
-        for f in factorizations:
+        if p in cached_starts:
+            start = cached_starts[p]
+
+        for f_idx in range(start, len(factorizations)):
+            f = factorizations[f_idx]
             break_ = False
 
             if smallest is not None and f == smallest:
+                new_cached_starts[p] = f_idx
                 break
 
             r_, smallest, break_ = one_repeated_prime_factor(
@@ -492,8 +506,9 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
             break_ |= break_
 
             if break_:
+                new_cached_starts[p] = f_idx
                 break
-
+    new_repeated_prime_factorizations_cache[tpl] = new_cached_starts
     return r
 
 def prune_elements_lt(factorizations, factorization):
@@ -719,9 +734,12 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                         failed += 1
                         outstanding_count[f] += 1
                     for y in new_:
-                        if ord(list(f),y,factorizations) == -1:
-                            outstanding_count[f] += 1
+                        lt_all = True
+                        if ord(list(f),y,factorizations) >= 0:
+                            lt_all = False
                             break
+                        if lt_all:
+                            outstanding_count[f] += 1
 
             for x in new_:
                 # Add all the new factorizations that remain that we have not
