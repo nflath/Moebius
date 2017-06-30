@@ -468,7 +468,6 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest):
     return possibility, f, True
 
 
-
 new_repeated_prime_factorizations_cache = {}
 def new_repeated_prime_factorizations(n, primes, factorizations):
     """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
@@ -493,9 +492,9 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
 
         for f_idx in range(start, len(factorizations)):
             f = factorizations[f_idx]
-            break_ = false
+            break_ = False
 
-            if smallest is not none and f == smallest:
+            if smallest is not None and f == smallest:
                 new_cached_starts[p] = f_idx
                 break
 
@@ -735,9 +734,9 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                         failed += 1
                         outstanding_count[f] += 1
                     for y in new_:
-                        lt_all = true
-                        if ord(list(f),y,factorizations) != -1:
-                            lt_all = false
+                        lt_all = True
+                        if ord(list(f),y,factorizations) >= 0:
+                            lt_all = False
                             break
                         if lt_all:
                             outstanding_count[f] += 1
