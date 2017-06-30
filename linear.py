@@ -24,6 +24,8 @@ fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 logger.addHandler(fh)
 
+def tupletized(l):
+    return tuple([tuple(x) for x in l])
 
 def calculated_Z(f, primes, factorizations):
     """Calculates Z(f).
@@ -69,7 +71,10 @@ def generate_all_possible_lists(lst, finished, idx=0, retn=[]):
     elif idx == len(lst):
         for x in finished:
             if list(x) not in retn:
+                real = [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23], [2, 2, 2, 3], [5, 5], [2, 13], [3, 3, 3], [2, 2, 7], [29], [2, 3, 5], [31], [2, 2, 2, 2, 2], [3, 11], [2, 17], [5, 7], [2, 2, 3, 3], [37], [2, 19], [3, 13], [2, 2, 2, 5], [41], [2, 3, 7], [43], [2, 2, 11], [3, 3, 5], [2, 23], [47], [2, 2, 2, 2, 3], [7, 7]]
+                if retn == real: pdb.set_trace()
                 return
+
         yield retn
     else:
         for x in lst[idx]:
@@ -77,7 +82,6 @@ def generate_all_possible_lists(lst, finished, idx=0, retn=[]):
                 continue
             retn[idx] = x
             for y in generate_all_possible_lists(lst, finished, idx + 1, retn):
-
                 yield y
 
 
@@ -354,7 +358,7 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest):
 
     return [possibility], smallest, True
 
-
+new_unique_prime_factorizations_for_length_cache = {}
 def new_unique_prime_factorizations_for_length(n, length, primes, factorizations):
     """Return all potential prime factorizations for n of the given length.
 
@@ -465,6 +469,7 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest):
 
 
 
+new_repeated_prime_factorizations_cache = {}
 def new_repeated_prime_factorizations(n, primes, factorizations):
     """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
 
@@ -475,13 +480,23 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
     """
     r = []
     smallest = None
+    cached_starts = {}
+    tpl = tupletized(factorizations)
+    if tpl[:-1] in new_repeated_prime_factorizations_cache:
+        cached_starts = new_repeated_prime_factorizations_cache[tpl[:-1]]
+    new_cached_starts = {}
     for p in primes:
 
         start = 0
-        for f in factorizations:
-            break_ = False
+        if p in cached_starts:
+            start = cached_starts[p]
 
-            if smallest is not None and f == smallest:
+        for f_idx in range(start, len(factorizations)):
+            f = factorizations[f_idx]
+            break_ = false
+
+            if smallest is not none and f == smallest:
+                new_cached_starts[p] = f_idx
                 break
 
             r_, smallest, break_ = one_repeated_prime_factor(
@@ -492,19 +507,20 @@ def new_repeated_prime_factorizations(n, primes, factorizations):
             break_ |= break_
 
             if break_:
+                new_cached_starts[p] = f_idx
                 break
-
+    new_repeated_prime_factorizations_cache[tpl] = new_cached_starts
     return r
 
 def prune_elements_lt(factorizations, factorization):
     keep = []
     for x in range(0, len(factorizations)):
-        found_lt = False
+        found_lt = false
         for y in range(x+1, len(factorizations)):
             if ord(factorizations[x],
                    factorizations[y],
                    factorizations) == 1:
-                found_lt = True
+                found_lt = true
                 break
         if not found_lt:
             keep += [factorizations[x]]
@@ -523,36 +539,36 @@ def generate_possibilities_for_factorization(n, m, primes, factorizations):
         return new_unique_prime_factorizations(
             n, 2, primes, factorizations)
     else:
-        assert False
+        assert false
 
-def index_recursive(lst, elt, last=False):
-    """Find elt in list of lists lst
+def index_recursive(lst, elt, last=false):
+    """find elt in list of lists lst
 
-    Returns whether or not the element was found, and the index of the
-    list it was found in.  If last is set, returns the last index of the
+    returns whether or not the element was found, and the index of the
+    list it was found in.  if last is set, returns the last index of the
     list it was found in.
     """
     for l in lst:
         for e in l:
             if e == elt:
                 if not last:
-                    return True, lst.index(l)
+                    return true, lst.index(l)
                 f, i = index_recursive(lst[lst.index(l)+1:],elt,last)
                 if f:
-                    return True, i + lst.index(l) + 1
-                return True, lst.index(l)
+                    return true, i + lst.index(l) + 1
+                return true, lst.index(l)
 
-    return False, 0
+    return false, 0
 
 def update_cache(cache, all_factorizations, finished, old_calls):
     for x in finished:
         for y in finished:
             if (tuple(x),tuple(y)) in cache:
                 continue
-            x_found, x_first_idx = index_recursive(all_factorizations,list(x),last=False)
-            x_found, x_last_idx = index_recursive(all_factorizations,list(x),last=True)
-            y_found, y_first_idx = index_recursive(all_factorizations,list(y),last=False)
-            y_found, y_last_idx = index_recursive(all_factorizations,list(y),last=True)
+            x_found, x_first_idx = index_recursive(all_factorizations,list(x),last=false)
+            x_found, x_last_idx = index_recursive(all_factorizations,list(x),last=true)
+            y_found, y_first_idx = index_recursive(all_factorizations,list(y),last=false)
+            y_found, y_last_idx = index_recursive(all_factorizations,list(y),last=true)
 
             if x == y:
                 cache[tuple(x),tuple(y)] = 0
@@ -566,10 +582,10 @@ def update_cache(cache, all_factorizations, finished, old_calls):
     for x, y in old_calls.keys():
         if (tuple(x),tuple(y)) in cache:
             continue
-        x_found, x_first_idx = index_recursive(all_factorizations,list(x),last=False)
-        x_found, x_last_idx = index_recursive(all_factorizations,list(x),last=True)
-        y_found, y_first_idx = index_recursive(all_factorizations,list(y),last=False)
-        y_found, y_last_idx = index_recursive(all_factorizations,list(y),last=True)
+        x_found, x_first_idx = index_recursive(all_factorizations,list(x),last=false)
+        x_found, x_last_idx = index_recursive(all_factorizations,list(x),last=true)
+        y_found, y_first_idx = index_recursive(all_factorizations,list(y),last=false)
+        y_found, y_last_idx = index_recursive(all_factorizations,list(y),last=true)
 
         if not x_found and not y_found:
             break
@@ -588,55 +604,55 @@ def update_cache(cache, all_factorizations, finished, old_calls):
         elif y_last_idx < x_first_idx and y in finished:
             cache[tuple(x),tuple(y)] = 1
 
-def all_potentially_useful_z(all_factorizations, z_calculated, blocked_potential_useful_Z,finished):
+def all_potentially_useful_z(all_factorizations, z_calculated, blocked_potential_useful_z,finished):
     all_confusions = set()
     for x in all_factorizations:
         if len(x) == 1:
             continue
         else:
-            allFinished = True
+            allfinished = true
             factors = []
             for y in x:
                 if tuple(y) not in finished:
-                    allFinished = False
+                    allfinished = false
                     break
                 else:
                     factors += y
-            if allFinished:
+            if allfinished:
                 all_confusions.add(tuple(sorted(tuple(factors))))
 
-    all_potential_useful_Z = set()
+    all_potential_useful_z = set()
     for x in all_confusions:
         for y in range(1,len(x)):
             for z in itertools.combinations(x,y):
                 if z not in z_calculated:
-                    all_potential_useful_Z.add(z)
+                    all_potential_useful_z.add(z)
 
 
     for x in generate_all_possible_lists(all_factorizations,finished):
         primes = [x[0] for x in x if len(x) == 1]
-        all_potential_useful_Z2 = copy.copy(all_potential_useful_Z)
-        for y in all_potential_useful_Z2:
+        all_potential_useful_z2 = copy.copy(all_potential_useful_z)
+        for y in all_potential_useful_z2:
 
-            if y in blocked_potential_useful_Z:
-              if ord(y, blocked_potential_useful_Z[y][0], blocked_potential_useful_Z[y][1]) == 99:
+            if y in blocked_potential_useful_z:
+              if ord(y, blocked_potential_useful_z[y][0], blocked_potential_useful_z[y][1]) == 99:
                     break
-              del blocked_potential_useful_Z[y]
+              del blocked_potential_useful_z[y]
 
-            possible_z, possibility = calculated_Z(list(y), primes, x)
+            possible_z, possibility = calculated_z(list(y), primes, x)
             if possible_z == -1:
-                all_potential_useful_Z.remove(y)
-                blocked_potential_useful_Z[y] = possibility
+                all_potential_useful_z.remove(y)
+                blocked_potential_useful_z[y] = possibility
 
-    return all_potential_useful_Z
+    return all_potential_useful_z
 
 def all_eliminations(all_factorizations, finished, it_set, new_finished):
     e = copy.deepcopy(all_factorizations)
     for x in generate_all_possible_lists(all_factorizations,finished):
-        # For every possible list of factorizations, calculated
-        # Z(finished) and ensure that the Z value matches what we
+        # for every possible list of factorizations, calculated
+        # z(finished) and ensure that the z value matches what we
         # expect.
-        possible = True
+        possible = true
         primes = [x[0] for x in x if len(x) == 1]
         keep = []
 
@@ -645,27 +661,27 @@ def all_eliminations(all_factorizations, finished, it_set, new_finished):
             if len(set(y)) == len(y):
                 moebius_of_y = math.pow(-1,len(y))
             y = list(y)
-            possible_z, idx = calculated_Z(y, primes, x)
+            possible_z, idx = calculated_z(y, primes, x)
             if possible_z == -1:
                 continue
-                # This may not be good; don't use this information
+                # this may not be good; don't use this information
             else:
                 keep += [y]
 
             if tuple(y) in new_finished and y not in x:
-                assert False
-            if tuple(y) not in new_finished and ZIsPossible(
+                assert false
+            if tuple(y) not in new_finished and zispossible(
                     possible_z,
                     moebius_of_y) < len(x):
-                possible = False
+                possible = false
                 break
-            if y in x and possible_z != Z(x.index(y)+2):
-                possible = False
+            if y in x and possible_z != z(x.index(y)+2):
+                possible = false
                 break
 
         it_set = keep
         if possible:
-            # This is a possible factorization; make sure we're not
+            # this is a possible factorization; make sure we're not
             # eliminating anything in it.
             for y in range(0,len(x)):
                 if x[y] in e[y]:
@@ -674,30 +690,30 @@ def all_eliminations(all_factorizations, finished, it_set, new_finished):
 
 
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
-    """ Generates the list of factorization possibilities up to max_n """
+    """ generates the list of factorization possibilities up to max_n """
     global logger, calls
     finished = set()
     finished_for_n = {}
     outstanding = set()
     z_calculated = set()
     eliminate = collections.defaultdict(list)
-    blocked_potential_useful_Z = {}
-    logger.info("Start")
+    blocked_potential_useful_z = {}
+    logger.info("start")
     all_factorizations_master = []
 
     n = start_n
     while n <= max_n:
         finished_for_n[n] = copy.deepcopy(finished)
-        logger.info("Processing n=%d"%n)
+        logger.info("processing n=%d"%n)
         new = []
-        real_z = Z(n)
+        real_z = z(n)
         possible = []
         outstanding_count = collections.defaultdict(lambda : 0)
         total = 0
         failed = 0
         m = moebius(n)
         for factorizations in generate_all_possible_lists(all_factorizations,finished):
-            # Attempt every possible factorization and generate all possibilities
+            # attempt every possible factorization and generate all possibilities
             total += 1
             primes = [x[0] for x in factorizations if len(x) == 1]
 
@@ -705,33 +721,36 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
             new_ = prune_elements_lt(new_, factorizations)
 
             for f in outstanding:
-                # Check if the factorization 'f' is finished.  See if 'f' is in
+                # check if the factorization 'f' is finished.  see if 'f' is in
                 # this factorization possibility; keep a count for each
                 # outstanding possibility.
 
-                # FixMe: Really, we just have to add outstanding elements to a
+                # fixme: really, we just have to add outstanding elements to a
                 # set if they are not in factorizations.
                 if list(f) in factorizations:
                     outstanding_count[f] += 1
                 else:
                     if not new_:
-                        # Invalid generation - can we figure out how to skip it next time?
+                        # invalid generation - can we figure out how to skip it next time?
                         failed += 1
                         outstanding_count[f] += 1
                     for y in new_:
-                        if ord(list(f),y,factorizations) == -1:
-                            outstanding_count[f] += 1
+                        lt_all = true
+                        if ord(list(f),y,factorizations) != -1:
+                            lt_all = false
                             break
+                        if lt_all:
+                            outstanding_count[f] += 1
 
             for x in new_:
-                # Add all the new factorizations that remain that we have not
-                # previously eliminated using Z.
+                # add all the new factorizations that remain that we have not
+                # previously eliminated using z.
                 if x not in new and x not in eliminate[n-2]:
                     new += [x]
-        logger.debug("Initial possibilities: %s"%(str(new)))
+        logger.debug("initial possibilities: %s"%(str(new)))
         logger.debug("total: %d failed: %d"%(total,failed))
 
-        # Update the finished and outstanding sets.
+        # update the finished and outstanding sets.
         new_outstanding = set()
         new_finished = set()
         for x in outstanding:
@@ -757,30 +776,32 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         global cache
         update_cache(cache, all_factorizations, finished, old_calls)
-        all_potential_useful_Z = all_potentially_useful_z(all_factorizations,
+        all_potential_useful_z = all_potentially_useful_z(all_factorizations,
                                                           z_calculated,
-                                                          blocked_potential_useful_Z,
+                                                          blocked_potential_useful_z,
                                                           finished)
 
         logger.debug("new_finished: %s"%new_finished)
-        logger.debug("all_potentially_useful_z: %s"%all_potential_useful_Z)
+        logger.debug("all_potentially_useful_z: %s"%all_potential_useful_z)
 
-        it_set = new_finished | all_potential_useful_Z
+        it_set = new_finished | all_potential_useful_z
         e = all_eliminations(all_factorizations, finished, it_set, new_finished)
 
         z_calculated |= new_finished
-        z_calculated |= all_potential_useful_Z
+        z_calculated |= all_potential_useful_z
         new_eliminate = []
 
         for x in range(0,len(e)):
             for y in e[x]:
                 new_eliminate += [[x, y]]
+                if y == factorize(x+2):
+                    pdb.set_trace()
 
         if new_eliminate:
-            # For all of our new elimination, update all_factorizations and
+            # for all of our new elimination, update all_factorizations and
             # reset to calculate from the lowert point.
 
-            min_ = None
+            min_ = none
             for x in new_eliminate:
                 all_factorizations[x[0]].remove(x[1])
                 if not min_:
@@ -792,8 +813,8 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
             print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
             n = min_+2
             all_factorizations = all_factorizations[:min_]
-
-            finished = finished_for_n[n]#set()
+            # new_repeated_prime_factorizations_cache = {}
+            finished = finished_for_n[n]
             outstanding = set()
 
             continue
