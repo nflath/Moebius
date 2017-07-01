@@ -651,7 +651,7 @@ def all_potentially_useful_z(all_factorizations,
 
     return all_potential_useful_z
 
-def all_eliminations(all_factorizations, finished, it_set, new_finished):
+def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
     """ Returns everything we can show is impossible. """
 
     e = copy.deepcopy(all_factorizations)
@@ -677,17 +677,17 @@ def all_eliminations(all_factorizations, finished, it_set, new_finished):
 
             if tuple(y) in new_finished and y not in x:
                 assert False
-            if tuple(x) in x and tuple(y) not in new_finished and  ZIsPossible(
+            elif tuple(x) in x and tuple(y) not in new_finished and  ZIsPossible(
                     possible_z,
                     moebius_of_y) < x.index(y)+2:
                 possible = False
                 break
-            if tuple(y) not in new_finished and ZIsPossible(
+            elif tuple(y) not in new_finished and ZIsPossible(
                     possible_z,
                     moebius_of_y) < len(x):
                 possible = False
                 break
-            if y in x and possible_z != Z(x.index(y)+2):
+            elif y in x and possible_z != Z(x.index(y)+2):
                 possible = False
                 break
 
@@ -800,7 +800,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         if it_set:
             # Find what we can eliminate
-            e = all_eliminations(all_factorizations, finished, it_set, new_finished)
+            e = all_eliminations(n, all_factorizations, finished, it_set, new_finished)
 
             z_calculated |= new_finished
             z_calculated |= all_potential_useful_z
