@@ -377,7 +377,7 @@ def new_unique_prime_factorizations_for_length(n, length, primes, factorizations
 
     # r is the list of all factorizations that have length one less that our
     # search.
-
+    r = [x for x in factorizations if len(x) == length - 1]
     smallest = None
     added = False
 
@@ -655,7 +655,7 @@ def all_eliminations(all_factorizations, finished, it_set, new_finished):
     """ Returns everything we can show is impossible. """
 
     e = copy.deepcopy(all_factorizations)
-
+    if n == 56: pdb.set_trace()
     for x in generate_all_possible_lists(all_factorizations,finished):
         # for every possible list of factorizations, calculated
         # z(finished) and ensure that the z value matches what we
