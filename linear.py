@@ -558,16 +558,24 @@ def generate_possibilities_for_factorization(n, m, primes, factorizations, finis
 
         if(max_idx) != -1:
             max_idx += 1
-            while max_idx < len(factorizations) and 2 not in factorizations[max_idx]:
-                max_idx += 1
-            max_idx += 1
-            if max_idx >= len(factorizations):
+
+            found = False
+            while not found and max_idx < len(all_factorizations):
+                for y in all_factorizations[max_idx]:
+                    if 2 in y and tuple(y) in finished:
+                        found, max_idx = index_recursive(all_factorizations, y, last=True)
+                        break
+                max_idx = max_idx + 1
+
+
+            if max_idx >= len(all_factorizations):
                 # Just go to the end next time
                 end[0] = -1
             if end[0] != -1:
                 end[0] = max(start[0], max_idx)
 
         return r
+
     elif m == 1:
         return new_unique_prime_factorizations(
             n, 2, primes, factorizations)
