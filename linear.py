@@ -327,7 +327,7 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest, fi
     if p == smallest:
         # FixMe: Move this out of this function into the containing one
         return [], smallest, True
-    if possibility in factorizations:
+    if possibility in factorizations or tuple(possibility) in finished:
         # Alread found this or it has a repeated prime
         return [], smallest, False
     if len(set(possibility)) != len(possibility):
