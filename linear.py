@@ -313,7 +313,7 @@ def moebius(n):
     return int(math.pow(-1, len(f)))
 
 
-def one_unique_prime_factorization(n, factorizations, potential, p, smallest):
+def one_unique_prime_factorization(n, factorizations, potential, p, smallest, finished, all_factorizations):
     """Returns the possible factorizations of n with no repeated factors.
 
     'p' is the prime to use and 'potential' is the factorization we are
@@ -342,76 +342,70 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest):
         if prime in primes_finished:
             continue
         primes_finished.add(prime)
-
         other = possibility[:i] + possibility[i + 1:]
 
-
-        if other not in factorizations:
+        found, idx = index_recursive(all_factorizations, other)
+        if not found:
             return [], smallest, True
 
-        for i in range(0, factorizations.index(other)):
-            if sorted([prime] + factorizations[i]) not in factorizations:
+        for i in range(0, idx):
+           for y in all_factorizations[i]:
+               x = sorted([prime] + y)
+               _, idx__ = index_recursive(all_factorizations, y, last=True)
+               found, _ = index_recursive(all_factorizations, x, last=True)
+               if idx__ < idx and not found:
+                  return [], smallest,  True
+
+
+        for i in factorizations:
+            if ord(possibility,i,factorizations) == -1:
                 return [], smallest, True
 
-    for i in factorizations:
-        if ord(possibility,i,factorizations) == -1:
-            return [], smallest, False
-
-    return [possibility], smallest, True
-
-def new_unique_prime_factorizations_for_length(n, length, primes, factorizations):
-    """Return all potential prime factorizations for n of the given length.
-
-    Find all current factorizations of length l-1.  For each of them,
-    find the lowest prime that when multiplied by the factorization is
-    not in the list.  Once you find one possibility, you do not need to
-    go past that prime for future cases.
-    """
-
-    if length == 1:
-        # If the length is 1, the only possibility is that n is a prime.
-        return [[n]]
-
-    result = []
-
-    # r is the list of all factorizations that have length one less that our
-    # search.
-    r = [x for x in factorizations if len(x) == length - 1]
-    smallest = None
-    added = False
-
-    for potential in r:
-        x = potential
-        added = False
-        for p in primes:
-            # FixMe: Early-exit using smallest in this function.
-
-            n_, smallest, break_ = one_unique_prime_factorization(
-                n, factorizations, potential, p, smallest)
-            for x in n_:
-                if x not in result:
-                    result += [x]
-            if break_:
-                break
-    return result
+    return [possibility], potential, True
 
 
-def new_unique_prime_factorizations(n, start_length, primes, factorizations):
+def new_unique_prime_factorizations(n, odd, primes, factorizations, finished, all_factorizations):
     """Returns all prime factorizations with no duplicated primes with either even or odd number of factors.
 
     Find all possibilities of size start_length, then start_length+2,
     start_length+4, ... until possibilities are no longer generated.
     """
-    length = start_length
-    possibilities = new_unique_prime_factorizations_for_length(
-        n, length, primes, factorizations)
-    result = []
-    while possibilities:
-        result += possibilities
-        length += 2
-        possibilities = new_unique_prime_factorizations_for_length(
-            n, length, primes, factorizations)
-    return result
+    r = []
+    if odd:
+        r += [[n]]
+        # Always a possibility of being prime
+    smallest = None
+    max_idx = None
+    #if n == 5:         pdb.set_trace()
+    for p in primes:
+        for f_idx in range(0, len(factorizations)):
+
+            f = factorizations[f_idx]
+
+            if len(set(f)) != len(f):
+                continue
+
+            if p in f:
+                continue
+
+            if odd and ((len(f) % 2) == 1) or \
+                not odd and len(f) % 2 == 0:
+                continue
+
+            #if n == 29 and p == 3 and f == [2,5]: pdb.set_trace()
+            #if n == 6: pdb.set_trace()
+            n_, smallest, break_ = one_unique_prime_factorization(
+                n, factorizations, f, p, smallest, finished, all_factorizations)
+            for x in n_:
+                if x not in r:
+                    r += [x]
+
+            if break_:
+                if not max_idx:
+                    max_idx = f_idx
+                break
+
+    return r, max_idx
 
 
 def one_repeated_prime_factor(n, factorizations, p, f, smallest, finished, all_factorizations):
@@ -430,7 +424,6 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, finished, all_f
         return None, smallest, False
 
     # Just find what index f is in the factorizations list
-    #idx__ = factorizations.index(f)
 
     if possibility in factorizations or tuple(possibility) in finished:
         # We've already found this.  Keep searching.
@@ -457,7 +450,8 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, finished, all_f
            for y in all_factorizations[i]:
                x = sorted([prime] + y)
                found, _ = index_recursive(all_factorizations, x)
-               if not found:
+               _, idx__ = index_recursive(all_factorizations, y, last=True)
+               if idx__ < idx and not found:
                   return None, f,  True
 
         for i in factorizations:
@@ -543,9 +537,26 @@ def prune_elements_lt(factorizations, factorization):
 def generate_possibilities_for_factorization(n, m, primes, factorizations, finished, all_factorizations):
     """ Generate all possibilities for the given n and m. """
     global start, end
+    #if n == 20: pdb.set_trace()
     if m == -1:
-        return new_unique_prime_factorizations(
-            n, 1, primes, factorizations)
+        r, max_idx = new_unique_prime_factorizations(
+            n, True, primes, factorizations, finished, all_factorizations)
+
+        if not max_idx:
+            max_idx = -1
+
+        max_idx += 1
+        while max_idx < len(all_factorizations):
+            if len(all_factorizations[max_idx]) == 1 and len(all_factorizations[max_idx][0]):
+                break
+            max_idx += 1
+
+        if max_idx >= len(all_factorizations):
+              end[-1] = -1
+        if end[-1] != -1:
+              end[-1] = max(end[-1], max_idx)
+
+        return r
     elif m == 0:
         r, max_idx = new_repeated_prime_factorizations(
             n,
@@ -572,13 +583,29 @@ def generate_possibilities_for_factorization(n, m, primes, factorizations, finis
                 # Just go to the end next time
                 end[0] = -1
             if end[0] != -1:
-                end[0] = max(start[0], max_idx)
+                end[0] = max(end[0], max_idx)
 
         return r
 
     elif m == 1:
-        return new_unique_prime_factorizations(
-            n, 2, primes, factorizations)
+        #if n == 33: pdb.set_trace()
+        r, max_idx = new_unique_prime_factorizations(
+            n, False, primes, factorizations, finished, all_factorizations)
+
+        if not max_idx:
+            max_idx = -1
+
+        max_idx += 1
+        while max_idx < len(all_factorizations):
+            if len(all_factorizations[max_idx]) == 1 and len(all_factorizations[max_idx][0]):
+                break
+            max_idx += 1
+
+        if max_idx >= len(all_factorizations):
+              end[1] = -1
+        if end[1] != -1:
+              end[-1] = max(end[1], max_idx)
+        return r
     else:
         assert False
 
@@ -749,8 +776,8 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
                     e[y].remove(x[y])
     return e
 
-start = [0,0,0]
-end = [0, 0, 0]
+start = {0: 0, -1: 0, 1: 0}
+end = {0: 0, 1: 0, -1: 0}
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
     """ generates the list of factorization possibilities up to max_n """
     global logger, calls, start, end
@@ -776,20 +803,29 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         m = moebius(n)
         s = start[m]
         e = end[m]
-        #if n == 24: pdb.set_trace()
+        #if n== 29: pdb.set_trace()
+
         end[m] = 0 # Reset end
         if e == -1:
             e = 0
         for factorizations in generate_all_possible_lists(all_factorizations,finished,s,e):
             # attempt every possible factorization and generate all possibilities
-            total += 1
             primes = [x[0] for x in factorizations if len(x) == 1]
 
             new_ = generate_possibilities_for_factorization(n,m,primes,factorizations, finished,all_factorizations)
-            #if n == 8: pdb.set_trace()
             new_ = prune_elements_lt(new_, factorizations)
 
+            for x in new_:
+                # add all the new factorizations that remain that we have not
+                # previously eliminated using z.
+                if x not in new and x not in eliminate[n-2]:
+                    new += [x]
+
+        # FixMe: Need to generate 'finished' in a better way.
+        for factorizations in generate_all_possible_lists(all_factorizations,finished,0,0):
+            total = total + 1
             for f in outstanding:
+
                 # check if the factorization 'f' is finished.  see if 'f' is in
                 # this factorization possibility; keep a count for each
                 # outstanding possibility.
@@ -799,27 +835,17 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 if list(f) in factorizations:
                     outstanding_count[f] += 1
                 else:
-                    if not new_:
-                        # invalid generation - can we figure out how to skip it next time?
-                        failed += 1
-                        outstanding_count[f] += 1
-                    for y in new_:
-                        lt_all = True
-                        if ord(list(f),y,factorizations) >= 0:
-                            lt_all = False
-                            break
-                        if lt_all:
+                    for y in new:
+                        alllower = True
+                        if ord(f,y,all_factorizations) > -1:
+                            alllower = False
+                        if alllower:
                             outstanding_count[f] += 1
 
-            for x in new_:
-                # add all the new factorizations that remain that we have not
-                # previously eliminated using z.
-                if x not in new and x not in eliminate[n-2]:
-                    new += [x]
         logger.debug("initial possibilities: %s"%(str(new)))
 
         assert new
-
+        #if n == 26: pdb.set_trace()
         # update the finished and outstanding sets.
         new_outstanding = set()
         new_finished = set()
@@ -859,6 +885,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         it_set = new_finished | all_potential_useful_z
 
+        #it_set = None
         if it_set:
             # Find what we can eliminate
             e = all_eliminations(n, all_factorizations, finished, it_set, new_finished)
@@ -889,8 +916,8 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
                 n = min_+2
                 all_factorizations = all_factorizations[:min_]
-                start = [0,0,0]
-                end = [0,0,0]
+                start = {0: 0, -1: 0, 1: 0}
+                end = {0: 0, 1: 0, -1: 0}
                 # new_repeated_prime_factorizations_cache = {}
                 finished = finished_for_n[n]
                 outstanding = set()
