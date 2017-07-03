@@ -5,22 +5,26 @@ import copy
 import cProfile
 import sys
 import itertools
+import logging
 from functools import reduce
 from util import *
 # Naming conventions:
 
 # Set up the logger
-import logging
-logger = logging.getLogger('Moebius')
-logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('log.log')
-fh.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-logger.addHandler(fh)
+logger = None:
+def setupLogger():
+    global logger
+    logger = logging.getLogger('Moebius')
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler('log.log')
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(ch)
 
 def calculated_Z(f, primes, factorizations):
     """Calculates Z(f).
@@ -816,7 +820,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         # FixMe: Start actually never gets set.  This isn't as important, but
         # should still be done.
 
-        logger.info("  Start and end for possibility generation: %d %d"%(s,e))
+        logger.debug("  Start and end for possibility generation: %d %d"%(s,e))
         for factorizations in generate_all_possible_lists(all_factorizations,s,e):
             # Generate possibilities for each subset of the possibility tree that matters
             new_ = generate_possibilities_for_factorization(
@@ -900,6 +904,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
 if __name__ == "__main__":
     def main():
+        setupLogger()
         f = generate_factorization_possibilities(int(sys.argv[1]))
         print(1, "[[1]]")
         for n in range(0, len(f)):
