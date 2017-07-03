@@ -6,7 +6,7 @@ import cProfile
 import sys
 import itertools
 from functools import reduce
-
+from util import *
 # Naming conventions:
 
 # Set up the logger
@@ -21,12 +21,6 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 logger.addHandler(fh)
-
-def tupletized(l):
-    """ Return a version of the list of lists that is entirely in tuples."""
-    # FixMe: convert everything to just be tuples
-
-    return tuple([tuple(x) for x in l])
 
 def calculated_Z(f, primes, factorizations):
     """Calculates Z(f).
@@ -57,57 +51,6 @@ def calculated_Z(f, primes, factorizations):
             else:
                 break
     return len(in_), None
-
-def generate_all_possible_lists(lst, finished, start_idx=0, end_idx=0, idx=0, retn=[]):
-    """ Yields each possible list, where each index in lst is a list of possibilities.
-
-    The same possibility cannot be chose more than once."""
-    if lst == []:
-        yield lst
-    elif not retn:
-        if not end_idx:
-            end_idx = len(lst)
-        retn = [x[0] for x in lst[:end_idx]]
-        for y in generate_all_possible_lists(lst, finished, start_idx, end_idx, start_idx, retn):
-            yield y
-    elif idx == end_idx:
-        #for x in finished:
-            #if list(x) not in retn:
-                #return
-        yield retn
-    else:
-        for x in lst[idx]:
-            if x in retn[:idx]:
-                continue
-            retn[idx] = x
-            for y in generate_all_possible_lists(lst, finished, start_idx, end_idx, idx + 1, retn):
-                yield y
-
-
-def simplify(this, other):
-    """ Remove all common factors in this and other.
-
-    For example, (2,2,2,2) and (2,2,5) simplifies to (2,2) and (5)."""
-    t_i = 0
-    o_i = 0
-    t = []
-    o = []
-    while(t_i < len(this) and o_i < len(other)):
-        if this[t_i] < other[o_i]:
-            t.append(this[t_i])
-            t_i += 1
-        elif this[t_i] > other[o_i]:
-            o.append(other[o_i])
-            o_i += 1
-        elif(this[t_i] == other[o_i]):
-            t_i += 1
-            o_i += 1
-    if t_i < len(this):
-        t += this[t_i:]
-    if o_i < len(other):
-        o += other[o_i:]
-    return t, o
-
 
 def ord_no_permutation(t, o, factorizations):
     """Returns whether we can show t < o or not just based on the given factorization.
@@ -236,29 +179,6 @@ def ord(this, other, factorizations):
 
     return 99
 
-
-class memoized(object):
-   '''Decorator. Caches a function's return value each time it is called.
-   If called later with the same arguments, the cached value is returned
-   (not reevaluated).
-   '''
-   def __init__(self, func):
-      self.func = func
-      self.cache = {}
-   def __call__(self, *args):
-      if args in self.cache:
-         return self.cache[args]
-      else:
-         value = self.func(*args)
-         self.cache[args] = value
-         return value
-   def __repr__(self):
-      '''Return the function's docstring.'''
-      return self.func.__doc__
-   def __get__(self, obj, objtype):
-      '''Support instance methods.'''
-      return functools.partial(self.__call__, obj)
-
 @memoized
 def Z(n):
     """ Returns the real Z(n)"""
@@ -277,9 +197,6 @@ def ZIsPossible(z, m):
             n_max = n
         n += 1
     return n_max
-
-
-
 
 @memoized
 def factorize(n):
@@ -515,7 +432,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, finished, all_f
     new_repeated_prime_factorizations_cache[(n, tpl)] = new_cached_starts
     return r, max_idx
 
-def prune_elements_lt(factorizations, factorization):
+def prune_elements_lt(factorizations, factorization, finished):
     """Remove all elements in factorizations that are less than another
 
     element in factorizations
@@ -525,6 +442,8 @@ def prune_elements_lt(factorizations, factorization):
         found_lt = False
         for y in range(0, len(factorizations)):
             if x == y: continue
+            if y not in finished:
+                continue
             if ord(factorizations[x],
                    factorizations[y],
                    factorization) == 1:
@@ -537,7 +456,6 @@ def prune_elements_lt(factorizations, factorization):
 def generate_possibilities_for_factorization(n, m, primes, factorizations, finished, all_factorizations):
     """ Generate all possibilities for the given n and m. """
     global start, end
-    #if n == 20: pdb.set_trace()
     if m == -1:
         r, max_idx = new_unique_prime_factorizations(
             n, True, primes, factorizations, finished, all_factorizations)
@@ -588,7 +506,6 @@ def generate_possibilities_for_factorization(n, m, primes, factorizations, finis
         return r
 
     elif m == 1:
-        #if n == 33: pdb.set_trace()
         r, max_idx = new_unique_prime_factorizations(
             n, False, primes, factorizations, finished, all_factorizations)
 
@@ -596,15 +513,16 @@ def generate_possibilities_for_factorization(n, m, primes, factorizations, finis
             max_idx = -1
 
         max_idx += 1
+
         while max_idx < len(all_factorizations):
-            if len(all_factorizations[max_idx]) == 1 and len(all_factorizations[max_idx][0]):
+            if len(all_factorizations[max_idx]) == 1 and len(all_factorizations[max_idx][0]) == 1:
                 break
             max_idx += 1
 
         if max_idx >= len(all_factorizations):
               end[1] = -1
         if end[1] != -1:
-              end[-1] = max(end[1], max_idx)
+              end[1] = max(end[1], max_idx+1)
         return r
     else:
         assert False
@@ -793,27 +711,29 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
     n = start_n
     while n <= max_n:
         finished_for_n[n] = copy.deepcopy(finished)
-        logger.info("processing n=%d"%n)
         new = []
         real_z = Z(n)
         possible = []
         outstanding_count = collections.defaultdict(lambda : 0)
         total = 0
         failed = 0
+
         m = moebius(n)
         s = start[m]
         e = end[m]
-        #if n== 29: pdb.set_trace()
+        logger.info("Processing n=%d moebius=%d"%(n,m))
 
         end[m] = 0 # Reset end
         if e == -1:
             e = 0
+
+        logger.info("  Start and end of possibilities: %d %d"%(s,e))
         for factorizations in generate_all_possible_lists(all_factorizations,finished,s,e):
             # attempt every possible factorization and generate all possibilities
             primes = [x[0] for x in factorizations if len(x) == 1]
 
             new_ = generate_possibilities_for_factorization(n,m,primes,factorizations, finished,all_factorizations)
-            new_ = prune_elements_lt(new_, factorizations)
+            new_ = prune_elements_lt(new_, factorizations, finished)
 
             for x in new_:
                 # add all the new factorizations that remain that we have not
@@ -821,7 +741,8 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 if x not in new and x not in eliminate[n-2]:
                     new += [x]
 
-        # FixMe: Need to generate 'finished' in a better way.
+        logger.debug("  Initial possibilities: %s"%(str(new)))
+
         for factorizations in generate_all_possible_lists(all_factorizations,finished,0,0):
             total = total + 1
             for f in outstanding:
@@ -835,16 +756,17 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 if list(f) in factorizations:
                     outstanding_count[f] += 1
                 else:
+                    alllower = True
                     for y in new:
-                        alllower = True
                         if ord(f,y,all_factorizations) > -1:
                             alllower = False
-                        if alllower:
-                            outstanding_count[f] += 1
+                    if alllower:
+                        outstanding_count[f] += 1
 
-        logger.debug("initial possibilities: %s"%(str(new)))
+        logger.debug("  Outstanding processing completed")
 
         assert new
+        if factorize(n) not in new: pdb.set_trace()
         #if n == 26: pdb.set_trace()
         # update the finished and outstanding sets.
         new_outstanding = set()
@@ -872,16 +794,14 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         global cache
         update_cache(cache, all_factorizations, finished, old_calls)
-        #if n == 9: pdb.set_trace()
-        #if n == 12: pdb.set_trace()
 
         all_potential_useful_z = all_potentially_useful_z(all_factorizations,
                                                           z_calculated,
                                                           blocked_potential_useful_z,
                                                           finished)
 
-        logger.debug("new_finished: %s"%new_finished)
-        logger.debug("all_potentially_useful_z: %s"%all_potential_useful_z)
+        logger.debug("  new_finished: %s"%new_finished)
+        logger.debug("  all_potentially_useful_z: %s"%all_potential_useful_z)
 
         it_set = new_finished | all_potential_useful_z
 
@@ -912,13 +832,11 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     min_ = min(min_,x[0])
                     if [x[1]] not in eliminate[x[0]]:
                         eliminate[x[0]] += [x[1]]
-                logger.log
-                print('n=',n,'eliminating: ',new_eliminate,'resetting to:',min_+2)
+                logger.info('  n=',n,'eliminating: ',new_eliminate,' based on: ', it_set, 'resetting to:',min_+2)
                 n = min_+2
                 all_factorizations = all_factorizations[:min_]
                 start = {0: 0, -1: 0, 1: 0}
                 end = {0: 0, 1: 0, -1: 0}
-                # new_repeated_prime_factorizations_cache = {}
                 finished = finished_for_n[n]
                 outstanding = set()
 
@@ -945,3 +863,5 @@ finished = {(2, 2, 5), (23,), (11,), (3, 7), (2, 5), (13,), (3, 3), (2, 2, 2, 2)
 outstanding = ()
 
 n = 24
+
+# FixMe: n=20 generates 2,2,5 - it should not, because everything else is lt it.
