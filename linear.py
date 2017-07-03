@@ -455,6 +455,40 @@ def prune_elements_lt(factorizations, factorization, finished):
             keep += [factorizations[x]]
     return keep
 
+def ord_absolute(t, o, all_factorizations, finished):
+    t, o = simplify(t,o)
+    if not t and not o:
+        return 0
+
+    if not t:
+        return -1
+
+    if not o:
+        return 1
+
+    t_found, t_first_idx = index_recursive(all_factorizations,list(t),last=False)
+    t_found, t_last_idx = index_recursive(all_factorizations,list(t),last=True)
+    o_found, o_first_idx = index_recursive(all_factorizations,list(o),last=False)
+    o_found, o_last_idx = index_recursive(all_factorizations,list(o),last=True)
+
+    assert t_found and o_found
+
+    if tuple(t) not in finished and tuple(o) not in finished:
+        return 99
+
+    elif tuple(t) not in finished and o_last_idx < t_first_idx:
+        return 1
+
+    elif tuple(t) not in finished:
+        return 99
+
+    elif t_last_idx < o_first_idx:
+        return -1
+
+    return 99
+
+
+
 def update_outstanding_and_finished(all_factorizations, new, outstanding, finished):
     outstanding_count = collections.defaultdict(lambda : 0)
     # For each outstanding factorization, how many trees exists where the
@@ -463,29 +497,73 @@ def update_outstanding_and_finished(all_factorizations, new, outstanding, finish
     total = 0
     # Total number of lists we generate
 
-    for factorizations in generate_all_possible_lists(all_factorizations,0,0):
-        # Populate total and outstanding count.
-        total = total + 1
-
-        for f in outstanding:
-            if list(f) in factorizations:
-                outstanding_count[f] += 1
-            else:
-                all_lower = True
-                for y in new:
-                    if ord(f,y,all_factorizations) > -1:
-                        all_lower = False
-                if all_lower:
-                    outstanding_count[f] += 1
-
     new_outstanding = set()
     new_finished = set()
-    for x in outstanding:
-        if outstanding_count[x] == total:
-            new_finished.add(x)
+
+
+
+    for n in new:
+        if tuple(n) not in finished:
+            outstanding.add(tuple(n))
+
+    for o in outstanding:
+        in_all = True
+        applicable = [x for x in all_factorizations if list(o) in x]
+        for x in applicable:
+            for y in x:
+                applicable += [x for x in all_factorizations if y in x and x not in applicable]
+
+        if applicable:
+            for factorizations in generate_all_possible_lists(applicable,0,0):
+                if list(o) not in factorizations:
+                    in_all = False
+                    break
+            if in_all:
+                new_finished.add(o)
+            else:
+                new_outstanding.add(o)
         else:
-            new_outstanding.add(x)
+            new_finished.add(o)
+
     outstanding = new_outstanding
+    new_outstanding = set()
+
+    for o in outstanding:
+        all_lower = True
+        for y in new:
+            if ord_absolute(o,y,all_factorizations,finished) > -1:
+                all_lower = False
+                break
+        if all_lower:
+            new_finished.add(o)
+        else:
+            new_outstanding.add(o)
+
+    outstanding = new_outstanding
+
+
+
+    # for factorizations in generate_all_possible_lists(all_factorizations,0,0):
+    #     # Populate total and outstanding count.
+    #     total = total + 1
+
+    #     for f in outstanding:
+    #         if list(f) in factorizations:
+    #             outstanding_count[f] += 1
+    #         else:
+    #             all_lower = True
+    #             for y in new:
+    #                 if ord(f,y,all_factorizations) > -1:
+    #                     all_lower = False
+    #             if all_lower:
+    #                 outstanding_count[f] += 1
+
+    # for x in outstanding:
+    #     if outstanding_count[x] == total:
+    #         new_finished.add(x)
+    #     else:
+    #         new_outstanding.add(x)
+    # outstanding = new_outstanding
 
     if len(new)==1:
         new_finished.add(tuple(new[0]))
@@ -660,7 +738,7 @@ def all_combinations_not_calculated(all_confusions, z_calculated):
     for x in all_confusions:
         for y in range(1,len(x)):
             for z in itertools.combinations(x,y):
-                if z not in z_calculated:
+                if tuple(z) not in z_calculated:
                     all_potential_useful_z.add(z)
     return all_potential_useful_z
 
@@ -693,6 +771,7 @@ def all_potentially_useful_z(all_factorizations,
 def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
     """ Returns everything we can show is impossible. """
     e = copy.deepcopy(all_factorizations)
+    #if n == 20: pdb.set_trace()
     for x in generate_all_possible_lists(all_factorizations):
         # for every possible list of factorizations, calculated
         # z(finished) and ensure that the z value matches what we
@@ -721,11 +800,11 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
                     moebius_of_y) < x.index(y)+2:
                 possible = False
                 break
-            elif tuple(y) not in new_finished and ZIsPossible(
-                    possible_z,
-                    moebius_of_y) < len(x):
-                possible = False
-                break
+            # elif tuple(y) not in new_finished and ZIsPossible(
+            #         possible_z,
+            #         moebius_of_y) < len(x):
+            #     possible = False
+            #     break
             elif y in x and possible_z != Z(x.index(y)+2):
                 possible = False
                 break
@@ -849,6 +928,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
+        if n == 28: pdb.set_trace()
         outstanding, finished, new_finished = \
           update_outstanding_and_finished(all_factorizations, new, outstanding, finished)
         logger.debug("  Outstanding processing finished: outstanding=%s new_finished=%s",outstanding,new_finished)
@@ -860,6 +940,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         logger.debug("  Ord_cache updated")
 
         # Find all the Z that we can analyze now to prune branches.
+        #if n == 20: pdb.set_trace()
         all_potential_useful_z = all_potentially_useful_z(all_factorizations,
                                                           z_calculated,
                                                           blocked_potential_useful_z,
