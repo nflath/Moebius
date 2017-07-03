@@ -750,22 +750,6 @@ def all_potentially_useful_z(all_factorizations,
     """ Returns all n for which Z(n) may be useful """
     all_confusions_ = all_confusions(all_factorizations, finished)
     all_potential_useful_z = all_combinations_not_calculated(all_confusions_, z_calculated)
-
-    for x in generate_all_possible_lists(all_factorizations):
-        primes = [x[0] for x in x if len(x) == 1]
-        all_potential_useful_z2 = copy.copy(all_potential_useful_z)
-        for y in all_potential_useful_z2:
-
-            if y in blocked_potential_useful_z:
-              if ord(y, blocked_potential_useful_z[y][0], blocked_potential_useful_z[y][1]) == 99:
-                    break
-              del blocked_potential_useful_z[y]
-
-            possible_z, possibility = calculated_Z(list(y), primes, x)
-            if possible_z == -1:
-                all_potential_useful_z.remove(y)
-                blocked_potential_useful_z[y] = possibility
-
     return all_potential_useful_z | new_finished
 
 def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
