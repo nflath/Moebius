@@ -647,11 +647,7 @@ def update_cache(cache, all_factorizations, finished, old_calls):
         elif y_last_idx < x_first_idx and y in finished:
             cache[tuple(x),tuple(y)] = 1
 
-def all_potentially_useful_z(all_factorizations,
-                             z_calculated,
-                             blocked_potential_useful_z,
-                             finished):
-    """ Returns all n for which Z(n) may be useful """
+def all_confusions(all_factorizations, finished):
     all_confusions = set()
     for x in all_factorizations:
         if len(x) == 1:
@@ -667,14 +663,24 @@ def all_potentially_useful_z(all_factorizations,
                     factors += y
             if allfinished:
                 all_confusions.add(tuple(sorted(tuple(factors))))
+    return all_confusions
 
+def all_combinations_not_calculated(all_confusions, z_calculated):
     all_potential_useful_z = set()
     for x in all_confusions:
         for y in range(1,len(x)):
             for z in itertools.combinations(x,y):
                 if z not in z_calculated:
                     all_potential_useful_z.add(z)
+    return all_potential_useful_z
 
+def all_potentially_useful_z(all_factorizations,
+                             z_calculated,
+                             blocked_potential_useful_z,
+                             finished):
+    """ Returns all n for which Z(n) may be useful """
+    all_confusions_ = all_confusions(all_factorizations, finished)
+    all_potential_useful_z = all_combinations_not_calculated(all_confusions_, z_calculated)
 
     for x in generate_all_possible_lists(all_factorizations,finished):
         primes = [x[0] for x in x if len(x) == 1]
