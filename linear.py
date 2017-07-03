@@ -772,6 +772,7 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
     """ Returns everything we can show is impossible. """
     e = copy.deepcopy(all_factorizations)
     #if n == 20: pdb.set_trace()
+
     for x in generate_all_possible_lists(all_factorizations):
         # for every possible list of factorizations, calculated
         # z(finished) and ensure that the z value matches what we
@@ -794,12 +795,15 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
             if tuple(y) in new_finished and y not in x:
                 possible = False
                 break
-
-            elif tuple(x) in x and tuple(y) not in new_finished and  ZIsPossible(
+            elif ZIsPossible(possible_z,moebius_of_y) == -1:
+                possible = False
+                break
+            elif tuple(y) in x and new_finished and ZIsPossible(
                     possible_z,
                     moebius_of_y) < x.index(y)+2:
                 possible = False
                 break
+            # FixMe: Is this correct?
             # elif tuple(y) not in new_finished and ZIsPossible(
             #         possible_z,
             #         moebius_of_y) < len(x):
@@ -928,7 +932,6 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
-        if n == 28: pdb.set_trace()
         outstanding, finished, new_finished = \
           update_outstanding_and_finished(all_factorizations, new, outstanding, finished)
         logger.debug("  Outstanding processing finished: outstanding=%s new_finished=%s",outstanding,new_finished)
