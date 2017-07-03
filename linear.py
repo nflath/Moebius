@@ -11,7 +11,7 @@ from util import *
 # Naming conventions:
 
 # Set up the logger
-logger = None:
+logger = None
 def setupLogger():
     global logger
     logger = logging.getLogger('Moebius')
