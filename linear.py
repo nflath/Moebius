@@ -394,7 +394,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, finished, all_f
     r = []
     smallest = None
 
-    max_idx = 0
+    max_idx = None
 
     cached_starts = {}
     tpl = tupletized(factorizations)
@@ -403,6 +403,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, finished, all_f
             cached_starts = new_repeated_prime_factorizations_cache[(n, tpl[:-x])]
             break
     new_cached_starts = {}
+    #if n == 4: pdb.set_trace()
     for p in primes:
 
         start = 0
@@ -414,7 +415,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, finished, all_f
             break_ = False
 
             if smallest is not None and f == smallest:
-                if not max_idx: max_idx = f_idx
+                if max_idx is None: max_idx = f_idx
                 new_cached_starts[p] = f_idx
                 break
 
@@ -427,32 +428,40 @@ def new_repeated_prime_factorizations(n, primes, factorizations, finished, all_f
             break_ |= break_
 
             if break_:
-                if not max_idx:
+                if max_idx is None:
                     max_idx = f_idx
                 new_cached_starts[p] = f_idx
                 break
-        if not max_idx:
+        if max_idx is None:
+            #pdb.set_trace()
             max_idx = -1
     new_repeated_prime_factorizations_cache[(n, tpl)] = new_cached_starts
     return r, max_idx
 
-def prune_elements_lt(factorizations, factorization, finished):
+def prune_elements_lt(factorizations, factorization, all_factorizations,finished):
     """Remove all elements in factorizations that are less than another element in factorizations
     """
     keep = []
     for x in range(0, len(factorizations)):
-        found_lt = False
+
+        if len(factorizations) == 1:
+            keep += [factorizations[x]]
+            continue
+
+        x_greater_than_all = True
+
         for y in range(0, len(factorizations)):
             if x == y: continue
-            if y not in finished:
-                continue
-            if ord(factorizations[x],
-                   factorizations[y],
-                   factorization) == 1:
-                found_lt = True
+            if ord_absolute(factorizations[x],
+                            factorizations[y],
+                            all_factorizations,
+                            finished) != 1:
+                x_greater_than_all = False
                 break
-        if not found_lt:
+        if not x_greater_than_all:
             keep += [factorizations[x]]
+        else:
+            pass
     return keep
 
 def ord_absolute(t, o, all_factorizations, finished):
@@ -471,7 +480,15 @@ def ord_absolute(t, o, all_factorizations, finished):
     o_found, o_first_idx = index_recursive(all_factorizations,list(o),last=False)
     o_found, o_last_idx = index_recursive(all_factorizations,list(o),last=True)
 
-    assert t_found and o_found
+    if not t_found and not o_found:
+        return 99
+
+    if t_found and not o_found and tuple(t) in finished:
+        return -1
+
+    if o_found and not t_found and tuple(o) in finished:
+        return 1
+
 
     if tuple(t) not in finished and tuple(o) not in finished:
         return 99
@@ -484,6 +501,9 @@ def ord_absolute(t, o, all_factorizations, finished):
 
     elif t_last_idx < o_first_idx:
         return -1
+
+    elif o_last_idx < t_first_idx:
+        return 1
 
     return 99
 
@@ -499,8 +519,6 @@ def update_outstanding_and_finished(all_factorizations, new, outstanding, finish
 
     new_outstanding = set()
     new_finished = set()
-
-
 
     for n in new:
         if tuple(n) not in finished:
@@ -605,8 +623,13 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
             factorizations,
             finished,
             all_factorizations)
+
         if max_idx != -1:
             start[0] = min(start[0], max_idx)
+
+
+        if(max_idx) == -1:
+            max_idx = len(factorizations)
 
         if(max_idx) != -1:
             max_idx += 1
@@ -757,36 +780,122 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
     e = copy.deepcopy(all_factorizations)
     #if n == 20: pdb.set_trace()
 
-    for x in generate_all_possible_lists(all_factorizations):
-        # for every possible list of factorizations, calculated
-        # z(finished) and ensure that the z value matches what we
-        # expect.
-        possible = True
-        primes = [x[0] for x in x if len(x) == 1]
-        keep = []
+    possible_primes = []
 
-        for y in it_set:
+    for x in all_factorizations:
+        for y in x:
+            if len(y) == 1:
+                possible_primes += y
+
+    max_idx = collections.defaultdict(lambda: 0)
+    min_idx = collections.defaultdict(lambda: 0)
+
+    # FixMe: How to prune in this step?  n = 15, y = (2,2,3,3), p = 5 should
+    # exit at 2 - is it just because one option?
+
+    for y in it_set:
+        #if n == 28 and y == (2,2,7): pdb.set_trace()
+        for p in possible_primes:
+            found_upper_bound = False
+            #if n == 15 and y == (2,3,5): pdb.set_trace()
+
+            for x_idx in range(0, len(all_factorizations)):
+                all_lower = True
+                unknown = False
+                for z in all_factorizations[x_idx]:
+                    v = sorted([p,p] + z)
+                    val = ord_absolute(v,y,all_factorizations,finished)
+                    if val == 99:
+                        all_lower = False
+                        t, o = simplify(y, sorted([p,p]+z))
+                        t_found, t_idx = index_recursive(all_factorizations, t)
+                        if not t_found or len(all_factorizations[t_idx])==1:
+                            unknown = True
+                            break
+
+                        if y in min_idx:
+                            if not t_found:
+                                min_idx[y] = min(min_idx[y],x_idx)
+                            else:
+                                min_idx[y] = min(min_idx[y],t_idx)
+                        else:
+                            if t:
+                                min_idx[y] = t_idx
+                            else:
+                                min_idx[y] = x_idx
+                        break
+                    elif val != 1:
+                        all_lower = False
+                        break
+                if unknown:
+                    break
+                if all_lower:
+                    #if n == 15 and y == (2,2,3,3): pdb.set_trace()
+                    found_upper_bound = True
+                    t, o = simplify(y, sorted([p,p]+z))
+                    t_found, t_idx = index_recursive(all_factorizations, t, last=True)
+
+                    if y in max_idx:
+
+                        if not t_found:
+                            max_idx[y] = max(max_idx[y],x_idx)
+                        else:
+                            max_idx[y] = max(max_idx[y],t_idx)
+
+                    else:
+                        if t:
+                            max_idx[y] = t_idx
+                        else:
+                            max_idx[y] = x_idx
+                    break
+
+            if not found_upper_bound:
+                if y in max_idx:
+                    del max_idx[y]
+                if y in min_idx:
+                    del min_idx[y]
+                break
+
+    global logger
+    logger.debug("  Generated upper and lower bounds for Z")
+    #if n == 12: pdb.set_trace()
+    e = {}
+    for y in max_idx:
+
+        if y not in min_idx or min_idx[y] > max_idx[y]:
+            # Doesn't give us anything
+            continue
+
+        e_ = {}
+
+        for x in range(min_idx[y],max_idx[y]+1):
+            if x not in e: e[x] = copy.copy(all_factorizations[x])
+            #e_[x] = copy.copy(all_factorizations[x])
+
+        for x in generate_all_possible_lists(all_factorizations,
+                                             min_idx[y],
+                                             max_idx[y]+1):
+
+            primes = [x[0] for x in x if len(x) == 1]
             moebius_of_y = 0
             if len(set(y)) == len(y):
-                moebius_of_y = math.pow(-1,len(y))
+                moebius_of_y = int(math.pow(-1,len(y)))
             y = list(y)
             possible_z, idx = calculated_Z(y, primes, x)
+            possible = True
             if possible_z == -1:
-                continue
-            else:
-                keep += [y]
+                e_ = {}
+                possible=True
 
-            if tuple(y) in new_finished and y not in x:
-                possible = False
-                break
+
+            #elif tuple(y) in new_finished and y not in x:
+                #possible = False
             elif ZIsPossible(possible_z,moebius_of_y) == -1:
                 possible = False
-                break
             elif tuple(y) in x and new_finished and ZIsPossible(
                     possible_z,
                     moebius_of_y) < x.index(y)+2:
                 possible = False
-                break
             # FixMe: Is this correct?
             # elif tuple(y) not in new_finished and ZIsPossible(
             #         possible_z,
@@ -795,22 +904,31 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
             #     break
             elif y in x and possible_z != Z(x.index(y)+2):
                 possible = False
-                break
 
-        it_set = keep
-        if possible:
-            # this is a possible factorization; make sure we're not
-            # eliminating anything in it.
-            for y in range(0,len(x)):
-                if x[y] in e[y]:
-                    e[y].remove(x[y])
-        new_eliminate = []
+            if possible:
+                for i in range(min_idx[tuple(y)],max_idx[tuple(y)]+1):
+                    if i >= len(x): pdb.set_trace()
+                    if x[i] in e[i]:
+                        e[i].remove(x[i])
+        # e_ contains the ones removed by *this* Z
 
-    for x in range(0,len(e)):
+
+
+        #new_e = copy.copy(e)
+        #for x in e:
+            #if x not in e_:
+                #new_e.remove(x)
+        #e = new_e
+
+    new_eliminate = []
+    for x in e:
         for y in e[x]:
             new_eliminate += [[x, y]]
-            assert y != factorize(x+2)
-    return new_eliminate, it_set
+            if y == factorize(x+2):
+                pdb.set_trace()
+                assert False
+    logger.debug("  Elimination possibilities completed")
+    return new_eliminate, max_idx.keys()
 
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
     """ Generates the list of possible factorizations from start_n to max_n. """
@@ -881,6 +999,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         e = end[m]
 
         end[m] = 0
+
         if e == -1:
             e = 0
         # Reset end so it can be set properly each iteration
@@ -890,6 +1009,8 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         logger.debug("  Start and end for possibility generation: %d %d"%(s,e))
         for factorizations in generate_all_possible_lists(all_factorizations,s,e):
             # Generate possibilities for each subset of the possibility tree that matters
+            #if n == 52: pdb.set_trace()
+            #if n == 2: pdb.set_trace()
             new_ = generate_possibilities_for_factorization(
                 n,
                 m,
@@ -899,7 +1020,9 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 start,
                 end)
 
-            new_ = prune_elements_lt(new_, factorizations, finished)
+            #if n == 4: pdb.set_trace()
+            #if n == 48: pdb.set_trace()
+            new_ = prune_elements_lt(new_, factorizations, all_factorizations,finished)
             # FixMe: This isn't fully functional.  For example, n=20 generates
             # [2,2,5] - it should not, because the other possibilities are all less than it.
 
@@ -910,6 +1033,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                     new += [x]
 
         logger.debug("  Initial possibilities: %s"%(str(new)))
+        if factorize(n) not in new: pdb.set_trace()
         assert factorize(n) in new
 
         all_factorizations += [sorted(new)]
