@@ -673,26 +673,6 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
     else:
         assert False
 
-
-def index_recursive(lst, elt, last=False):
-    """find elt in list of lists lst
-
-    returns whether or not the element was found, and the index of the
-    list it was found in.  if last is set, returns the last index of the
-    list it was found in.
-    """
-    for l in lst:
-        for e in l:
-            if e == elt:
-                if not last:
-                    return True, lst.index(l)
-                f, i = index_recursive(lst[lst.index(l)+1:],elt,last)
-                if f:
-                    return True, i + lst.index(l) + 1
-                return True, lst.index(l)
-
-    return False, 0
-
 def update_ord_cache(ord_cache, all_factorizations, finished, old_calls):
     """ Updates the ord_cache ord() uses. """
     for x in finished:
@@ -858,8 +838,18 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
 
     global logger
     logger.debug("  Generated upper and lower bounds for Z")
-    #if n == 12: pdb.set_trace()
     e = {}
+    new_eliminate = []
+
+    # for y in max_idx:
+    #     if y not in min_idx or min_idx[y] > max_idx[y]:
+    #         # Doesn't give us anything
+    #         continue
+
+    #     for x in range(min_idx[y],max_idx[y]+1):
+    #         #if x not in e: e[x] = copy.copy(all_factorizations[x])
+    #         e[x] = copy.copy(all_factorizations[x])
+
     for y in max_idx:
 
         if y not in min_idx or min_idx[y] > max_idx[y]:
@@ -869,14 +859,13 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
         e_ = {}
 
         for x in range(min_idx[y],max_idx[y]+1):
-            if x not in e: e[x] = copy.copy(all_factorizations[x])
-            #e_[x] = copy.copy(all_factorizations[x])
-
+            #if x not in e: e[x] = copy.copy(all_factorizations[x])
+            e_[x] = copy.copy(all_factorizations[x])
         for x in generate_all_possible_lists(all_factorizations,
                                              min_idx[y],
                                              max_idx[y]+1):
-
             primes = [x[0] for x in x if len(x) == 1]
+            #if n == 52 and y == (2,2,13) and x[48] == [2,5,5]: pdb.set_trace()
             moebius_of_y = 0
             if len(set(y)) == len(y):
                 moebius_of_y = int(math.pow(-1,len(y)))
@@ -885,14 +874,16 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
             possible = True
             if possible_z == -1:
                 e_ = {}
-                possible=True
+                #if n == 51 and y == (3,3,5): pdb.set_trace()
+                break
+                #possible=True
 
 
             #elif tuple(y) in new_finished and y not in x:
                 #possible = False
-            elif ZIsPossible(possible_z,moebius_of_y) == -1:
+            if ZIsPossible(possible_z,moebius_of_y) == -1:
                 possible = False
-            elif tuple(y) in x and new_finished and ZIsPossible(
+            elif tuple(y) in x and ZIsPossible(
                     possible_z,
                     moebius_of_y) < x.index(y)+2:
                 possible = False
@@ -908,25 +899,31 @@ def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
             if possible:
                 for i in range(min_idx[tuple(y)],max_idx[tuple(y)]+1):
                     if i >= len(x): pdb.set_trace()
-                    if x[i] in e[i]:
-                        e[i].remove(x[i])
+                    if x[i] in e_[i]:
+                        e_[i].remove(x[i])
+            #elif n == 51 and y == [3,3,5]:
+                #pdb.set_trace()
+                #2 + 2
         # e_ contains the ones removed by *this* Z
 
 
+        # if e_:
+        #     new_e = copy.copy(e)
+        #     for x in e:
+        #         if x in e_:
+        #             for y in e[x]:
+        #                 if y not in e_[x]:
+        #                     new_e[x].remove(y)
+        #     e = new_e
 
-        #new_e = copy.copy(e)
-        #for x in e:
-            #if x not in e_:
-                #new_e.remove(x)
-        #e = new_e
 
-    new_eliminate = []
-    for x in e:
-        for y in e[x]:
-            new_eliminate += [[x, y]]
-            if y == factorize(x+2):
-                pdb.set_trace()
-                assert False
+        for x in e_:
+            for z in e_[x]:
+                logger.info("  Eliminating [%d,%s] based on: %s " % (x+2,str(z),str(y)))
+                new_eliminate += [[x, z]]
+                if z == factorize(x+2):
+                    pdb.set_trace()
+                    assert False
     logger.debug("  Elimination possibilities completed")
     return new_eliminate, max_idx.keys()
 
@@ -1007,6 +1004,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         # should still be done.
 
         logger.debug("  Start and end for possibility generation: %d %d"%(s,e))
+        if n == 54: pdb.set_trace()
         for factorizations in generate_all_possible_lists(all_factorizations,s,e):
             # Generate possibilities for each subset of the possibility tree that matters
             #if n == 52: pdb.set_trace()
@@ -1071,15 +1069,16 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
                 min_ = None
                 for x in new_eliminate:
-                    all_factorizations[x[0]].remove(x[1])
-                    if not min_:
-                        min_ = x[0]
-                    min_ = min(min_,x[0])
-                    if [x[1]] not in eliminate[x[0]]:
-                        eliminate[x[0]] += [x[1]]
+                    if x[1] in all_factorizations[x[0]]:
+                        all_factorizations[x[0]].remove(x[1])
+                        if not min_:
+                            min_ = x[0]
+                        min_ = min(min_,x[0])
+                        if [x[1]] not in eliminate[x[0]]:
+                            eliminate[x[0]] += [x[1]]
 
                 n = min_+2
-                logger.info("  eliminating:%s base on: %s resetting to: %d" %(str(new_eliminate),str(new_z_calculated),n))
+
 
                 all_factorizations = all_factorizations[:min_]
                 start = start_for_n[n]
