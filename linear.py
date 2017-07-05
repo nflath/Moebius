@@ -398,10 +398,10 @@ def new_repeated_prime_factorizations(n, primes, factorizations, finished, all_f
 
     cached_starts = {}
     tpl = tupletized(factorizations)
-    for x in range(1,len(tpl)):
-        if (n, tpl[:-x]) in new_repeated_prime_factorizations_cache:
-            cached_starts = new_repeated_prime_factorizations_cache[(n, tpl[:-x])]
-            break
+    # for x in range(1,len(tpl)):
+    #     if (n, tpl[:-x]) in new_repeated_prime_factorizations_cache:
+    #         cached_starts = new_repeated_prime_factorizations_cache[(n, tpl[:-x])]
+    #         break
     new_cached_starts = {}
     #if n == 4: pdb.set_trace()
     for p in primes:
@@ -543,7 +543,8 @@ def update_outstanding_and_finished(all_factorizations, new, outstanding, finish
         else:
             new_finished.add(o)
 
-    outstanding = new_outstanding
+
+    outstanding = copy.copy(new_outstanding)
     new_outstanding = set()
 
     for o in outstanding:
@@ -558,30 +559,17 @@ def update_outstanding_and_finished(all_factorizations, new, outstanding, finish
             new_outstanding.add(o)
 
     outstanding = new_outstanding
+    new_outstanding = set()
+    for o in outstanding:
+        for y in finished:
+            if ord_absolute(o,y,all_factorizations,finished) == -1:
+                new_finished.add(o)
+                break
+        if o not in new_finished:
+            new_outstanding.add(o)
 
 
-
-    # for factorizations in generate_all_possible_lists(all_factorizations,0,0):
-    #     # Populate total and outstanding count.
-    #     total = total + 1
-
-    #     for f in outstanding:
-    #         if list(f) in factorizations:
-    #             outstanding_count[f] += 1
-    #         else:
-    #             all_lower = True
-    #             for y in new:
-    #                 if ord(f,y,all_factorizations) > -1:
-    #                     all_lower = False
-    #             if all_lower:
-    #                 outstanding_count[f] += 1
-
-    # for x in outstanding:
-    #     if outstanding_count[x] == total:
-    #         new_finished.add(x)
-    #     else:
-    #         new_outstanding.add(x)
-    # outstanding = new_outstanding
+    outstanding = new_outstanding
 
     if len(new)==1:
         new_finished.add(tuple(new[0]))
@@ -637,7 +625,7 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
             found = False
             while not found and max_idx < len(all_factorizations):
                 for y in all_factorizations[max_idx]:
-                    if 2 in y and tuple(y) in finished:
+                    if 2 in y and tuple(y) in finished and [2] + y not in r:
                         found, max_idx = index_recursive(all_factorizations, y, last=True)
                         break
                 max_idx = max_idx + 1
@@ -960,6 +948,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
 
 
     finished_for_n = {}
+    outstanding_for_n = {}
     start_for_n = {}
     end_for_n = {}
     # Historical data - contans the values of finished/start/end at the
@@ -986,6 +975,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         logger.info("Processing n=%d moebius=%d"%(n,m))
 
         finished_for_n[n] = copy.deepcopy(finished)
+        outstanding_for_n[n] = copy.deepcopy(outstanding)
         start_for_n[n] = copy.copy(start)
         end_for_n[n] = copy.copy(end)
 
@@ -1000,15 +990,13 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         if e == -1:
             e = 0
         # Reset end so it can be set properly each iteration
+
         # FixMe: Start actually never gets set.  This isn't as important, but
         # should still be done.
 
         logger.debug("  Start and end for possibility generation: %d %d"%(s,e))
-        if n == 54: pdb.set_trace()
         for factorizations in generate_all_possible_lists(all_factorizations,s,e):
             # Generate possibilities for each subset of the possibility tree that matters
-            #if n == 52: pdb.set_trace()
-            #if n == 2: pdb.set_trace()
             new_ = generate_possibilities_for_factorization(
                 n,
                 m,
@@ -1018,11 +1006,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 start,
                 end)
 
-            #if n == 4: pdb.set_trace()
-            #if n == 48: pdb.set_trace()
             new_ = prune_elements_lt(new_, factorizations, all_factorizations,finished)
-            # FixMe: This isn't fully functional.  For example, n=20 generates
-            # [2,2,5] - it should not, because the other possibilities are all less than it.
 
             for x in new_:
                 # add all the new factorizations that remain that we have not
@@ -1040,6 +1024,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         # outstanding factorizations that we finished at this n.
         outstanding, finished, new_finished = \
           update_outstanding_and_finished(all_factorizations, new, outstanding, finished)
+        if n >= 44 and not((3,3,5)  in outstanding or (3,3,5) in finished): pdb.set_trace()
         logger.debug("  Outstanding processing finished: outstanding=%s new_finished=%s",outstanding,new_finished)
 
         # Update the ord_cache used for the 'ord' function.
@@ -1084,7 +1069,7 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
                 start = start_for_n[n]
                 end = end_for_n[n]
                 finished = finished_for_n[n]
-                outstanding = set()
+                outstanding = outstanding_for_n[n]
 
                 continue
 
