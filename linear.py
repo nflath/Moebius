@@ -855,9 +855,9 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
         for x in range(min_idx[y],max_idx[y]+1):
             e[x] = copy.copy(all_factorizations[x])
 
-        for x in generate_all_possible_lists(all_factorizations):#
-                                             #min_idx[y],
-                                             #max_idx[y]+1):
+        for x in generate_all_possible_lists(all_factorizations,
+                                             min_idx[y],
+                                             max_idx[y]+1):
             # For each possibility that we need to check, check a variety of
             # conditions for possibility.
             primes = [x[0] for x in x if len(x) == 1]
