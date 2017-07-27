@@ -297,11 +297,15 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, finished, al
         # Always a possibility of being prime
     smallest = None
     max_idx = None
-    #if n == 5:         pdb.set_trace()
+
+    #if n == 47: pdb.set_trace()
+
     for p in primes:
+
         for f_idx in range(0, len(factorizations)):
 
             f = factorizations[f_idx]
+
 
             if len(set(f)) != len(f):
                 continue
@@ -313,8 +317,6 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, finished, al
                 not odd and len(f) % 2 == 0:
                 continue
 
-            #if n == 29 and p == 3 and f == [2,5]: pdb.set_trace()
-            #if n == 6: pdb.set_trace()
             n_, smallest, break_ = one_unique_prime_factorization(
                 n, factorizations, f, p, smallest, finished, all_factorizations)
             for x in n_:
@@ -324,6 +326,8 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, finished, al
             if break_:
                 if not max_idx:
                     max_idx = f_idx
+                    if [p] in factorizations:
+                        max_idx = max(f_idx,factorizations.index([p]))
                 break
 
     return r, max_idx
@@ -590,7 +594,7 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
             n, True, primes, factorizations, finished, all_factorizations)
 
         if not max_idx:
-            max_idx = -1
+            max_idx = len(factorizations)
 
         max_idx += 1
         while max_idx < len(all_factorizations):
@@ -614,7 +618,6 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
 
         if max_idx != -1:
             start[0] = min(start[0], max_idx)
-
 
         if(max_idx) == -1:
             max_idx = len(factorizations)
@@ -852,9 +855,9 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
         for x in range(min_idx[y],max_idx[y]+1):
             e[x] = copy.copy(all_factorizations[x])
 
-        for x in generate_all_possible_lists(all_factorizations,
-                                             min_idx[y],
-                                             max_idx[y]+1):
+        for x in generate_all_possible_lists(all_factorizations):#
+                                             #min_idx[y],
+                                             #max_idx[y]+1):
             # For each possibility that we need to check, check a variety of
             # conditions for possibility.
             primes = [x[0] for x in x if len(x) == 1]
@@ -876,7 +879,7 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
                 # If there is no n where Z(n) == possible_z with the correct
                 # moebius, this is impossible.
                 possible = False
-            elif tuple(y) in x and ZIsPossible(
+            elif y in x and ZIsPossible(
                     possible_z,
                     moebius_of_y) < (x.index(y)+2):
                 # If the largest possible N for which Z(n) == possible_z is
@@ -886,7 +889,6 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
                 # If the Z we calculated doesn't match Z(n) for this, just
                 # exit.
                 possible = False
-
             if possible:
                 # We couldn't rule out this possibility; update e
                 for i in range(min_idx[tuple(y)],max_idx[tuple(y)]+1):
@@ -895,12 +897,12 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
             if possible_z != -1:
                 calculated_keys.add(tuple(y))
 
-        # convert e to the idx, factorization pair
+        #convert e to the idx, factorization pair
         for x in e:
-            for z in e[x]:
-                logger.info("  Eliminating [n=%d,%s] based on: %s " % (x+2,str(z),str(y)))
-                eliminate += [[x, z]]
-                assert z != factorize(x+2)
+           for z in e[x]:
+               logger.info("  Eliminating [n=%d,%s] based on: %s " % (x+2,str(z),str(y)))
+               eliminate += [[x, z]]
+               assert z != factorize(x+2)
     logger.debug("  Elimination possibilities completed")
 
     return eliminate, calculated_keys
