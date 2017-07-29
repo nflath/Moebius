@@ -27,11 +27,8 @@ def setupLogger():
     logger.addHandler(ch)
 
 def calculated_Z(f, primes, factorizations):
-    """Calculates Z(f).
+    """Calculates Z(f)."""
 
-    For each prime 'p', counts the number of factorizations 'a' where
-    p*p*a <= f.  Returns the total number of cases this is True for.
-    """
     count = 0
     max_idx = 0
     in_ = set()
@@ -55,6 +52,33 @@ def calculated_Z(f, primes, factorizations):
             else:
                 break
     return len(in_), None
+
+def calculated_Z1(f, primes, factorizations):
+    """Calculates Z(f).
+
+    For each prime 'p', counts the number of factorizations 'a' where
+    p*a <= f and moebius(p*a)==1.  Returns the total number of cases
+    this is true for.
+    """
+    in_ = set()
+    for p in primes:
+        for x in factorizations:
+            if p in x:
+                continue
+            if len(set(x)) != len(x):
+                continue
+            if (len(x) % 2) == 0:
+                continue
+
+            possibility = sorted([p]+x)
+            val = ord(possibility, f, factorizations)
+            if val == 99:
+                return -1
+            elif val <= 0:
+                in_.add(tuple(possibility))
+            else:
+                break
+    return len(in_)
 
 def ord_no_permutation(t, o, factorizations):
     """Returns whether we can show t < o or not just based on the given factorization.
@@ -187,6 +211,11 @@ def ord(this, other, factorizations):
 def Z(n):
     """ Returns the real Z(n)"""
     return len([moebius(x) for x in range(1,n+1) if moebius(x) == 0])
+
+@memoized
+def Z1(n):
+    """ Returns the real Z(n)"""
+    return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
 
 @memoized
 def ZIsPossible(z, m):
