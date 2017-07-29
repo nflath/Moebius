@@ -56,34 +56,6 @@ def calculated_Z(f, primes, factorizations):
                 break
     return len(in_), None
 
-def calculated_Z1(f, primes, factorizations):
-    """Calculates Z(f).
-
-    For each prime 'p', counts the number of factorizations 'a' where
-    p*a <= f and moebius(p*a)==1.  Returns the total number of cases
-    this is true for.
-    """
-    in_ = set()
-    for p in primes:
-        for x in factorizations:
-            if p in x:
-                continue
-            if len(set(x)) != len(x):
-                continue
-            if (len(x) % 2) == 0:
-                continue
-
-            possibility = sorted([p]+x)
-            val = ord(possibility, f, factorizations)
-            if val == 99:
-                return -1
-            elif val <= 0:
-                in_.add(tuple(possibility))
-            else:
-                break
-    return len(in_)
-
-
 def ord_no_permutation(t, o, factorizations):
     """Returns whether we can show t < o or not just based on the given factorization.
 
@@ -217,11 +189,6 @@ def Z(n):
     return len([moebius(x) for x in range(1,n+1) if moebius(x) == 0])
 
 @memoized
-def Z1(n):
-    """ Returns the real Z(n)"""
-    return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
-
-@memoized
 def ZIsPossible(z, m):
     """ Given z and m, return the last possible index it could occur at (-1 if impossible)"""
     n = 2
@@ -238,6 +205,7 @@ def ZIsPossible(z, m):
 @memoized
 def factorize(n):
     """Returns the factorization of n"""
+
     assert n > 1
     factors = []
     for i in range(2, n + 1):
@@ -800,7 +768,6 @@ def ranges_for_z_calculations(n, all_factorizations, finished, it_set):
     min_idx = collections.defaultdict(lambda: 0)
 
     for y in it_set:
-        #if n == 56 and y == (2,2,2,7): pdb.set_trace()
         for p in possible_primes:
             # For each prime, try to find some index x_idx s.t
             # [p,p]*all_factorizations[x_idx] > y.  Keep track of the maximum
@@ -873,151 +840,72 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
 
     calculated_keys = set()
 
-    it_set = max_idx.keys()
+    for y in max_idx:
+        # Iterate through everything we found we could find a 1 value for.
 
-    #if n == 56: pdb.set_trace()
-
-    e = copy.deepcopy(all_factorizations)
-    if n == 60:
-        pdb.set_trace()
-    for x in generate_all_possible_lists(all_factorizations):#finished
-        # for every possible list of factorizations, calculated
-        # z(finished) and ensure that the z value matches what we
-        # expect.
-
-        cont = False
-        for b in finished:
-            if list(b) not in x:
-                cont = True
-        if cont:
+        if y not in min_idx:
+            # Doesn't give us anything.
+            calculated_keys.add(y)
             continue
 
-        possible = True
-        primes = [x[0] for x in x if len(x) == 1]
-        keep = []
+        # Populate e with every possibility in the range we're going through.
+        # When we hit a possibility that works, we'll remove it from e.  The
+        # ones that remain are what we can eliminate
+        e = {}
+        for x in range(min_idx[y],max_idx[y]+1):
+            e[x] = copy.copy(all_factorizations[x])
 
-        #if n == 20: pdb.set_trace()
+        for x in generate_all_possible_lists(all_factorizations,
+                                             min_idx[y],
+                                             max_idx[y]+1):
+            # For each possibility that we need to check, check a variety of
+            # conditions for possibility.
+            primes = [x[0] for x in x if len(x) == 1]
 
-        for y in it_set:
-            moebius_of_y = 0
+            moebius_of_y = 0 # FixMe: move this out into a function
             if len(set(y)) == len(y):
-                moebius_of_y = math.pow(-1,len(y))
+                moebius_of_y = int(math.pow(-1,len(y)))
+
             y = list(y)
             possible_z, idx = calculated_Z(y, primes, x)
-            possible_z1 = calculated_Z1(y, primes, x)
-            if possible_z == -1 or possible_z1 == -1:
-                continue
-            else:
-                keep += [y]
-
-            if tuple(y) in new_finished and y not in x:
-                pdb.set_trace()
-                assert False
-            elif y in x and tuple(y) not in new_finished and ZIsPossible(
-                    possible_z,
-                    moebius_of_y) < x.index(y)+2:
-                possible = False
+            possible = True
+            if possible_z == -1:
+                # We can't figure everything out; just go ahead and delete our work
+                # FixMe: This should be impossible
+                e = {}
                 break
+
+            if ZIsPossible(possible_z,moebius_of_y) == -1:
+                # If there is no n where Z(n) == possible_z with the correct
+                # moebius, this is impossible.
+                possible = False
+            elif y in x and ZIsPossible(
+                    possible_z,
+                    moebius_of_y) < (x.index(y)+2):
+                # If the largest possible N for which Z(n) == possible_z is
+                # a lower position than where y is, then this is impossible
+                possible = False
             elif y in x and possible_z != Z(x.index(y)+2):
+                # If the Z we calculated doesn't match Z(n) for this, just
+                # exit.
                 possible = False
-                break
-            elif y not in x and tuple(y) not in new_finished and ZIsPossible(
-                    possible_z,
-                    moebius_of_y) < len(x):
-                possible = False
-                break
-            elif y in x and possible_z1 != Z1(x.index(y)+2):
-                possible_z1 = calculated_Z1(y, primes, x)
-                possible = False
-                break
+            if possible:
+                # We couldn't rule out this possibility; update e
+                for i in range(min_idx[tuple(y)],max_idx[tuple(y)]+1):
+                    if x[i] in e[i]:
+                        e[i].remove(x[i])
+            if possible_z != -1:
+                calculated_keys.add(tuple(y))
 
+        #convert e to the idx, factorization pair
+        for x in e:
+           for z in e[x]:
+               logger.info("  Eliminating [n=%d,%s] based on: %s " % (x+2,str(z),str(y)))
+               eliminate += [[x, z]]
+               assert z != factorize(x+2)
+    logger.debug("  Elimination possibilities completed")
 
-        it_set = keep
-        if possible:
-            # this is a possible factorization; make sure we're not
-            # eliminating anything in it.
-            for y in range(0,len(x)):
-                if x[y] in e[y]:
-                    e[y].remove(x[y])
-
-
-    for x in range(0,len(e)):
-        for y in e[x]:
-            eliminate += [[x, y]]
-            if y == factorize(x+2):
-                pdb.set_trace()
-
-    for z in eliminate:
-        logger.info("Eliminating: n = "+ str(z[0]+2)+ " "+str(z[1]))
-    logger.debug("Evaluated zs for:" + str(it_set))
-    return eliminate, it_set
-
-    # for y in max_idx:
-    #     # Iterate through everything we found we could find a 1 value for.
-
-    #     if y not in min_idx:
-    #         # Doesn't give us anything.
-    #         calculated_keys.add(y)
-    #         continue
-
-    #     # Populate e with every possibility in the range we're going through.
-    #     # When we hit a possibility that works, we'll remove it from e.  The
-    #     # ones that remain are what we can eliminate
-    #     e = {}
-    #     for x in range(min_idx[y],max_idx[y]+1):
-    #         e[x] = copy.copy(all_factorizations[x])
-
-    #     for x in generate_all_possible_lists(all_factorizations,
-    #                                          min_idx[y],
-    #                                          max_idx[y]+1):
-    #         # For each possibility that we need to check, check a variety of
-    #         # conditions for possibility.
-    #         primes = [x[0] for x in x if len(x) == 1]
-
-    #         moebius_of_y = 0 # FixMe: move this out into a function
-    #         if len(set(y)) == len(y):
-    #             moebius_of_y = int(math.pow(-1,len(y)))
-
-    #         y = list(y)
-    #         possible_z, idx = calculated_Z(y, primes, x)
-    #         possible = True
-    #         if possible_z == -1:
-    #             # We can't figure everything out; just go ahead and delete our work
-    #             # FixMe: This should be impossible
-    #             e = {}
-    #             break
-
-    #         if ZIsPossible(possible_z,moebius_of_y) == -1:
-    #             # If there is no n where Z(n) == possible_z with the correct
-    #             # moebius, this is impossible.
-    #             possible = False
-    #         elif y in x and ZIsPossible(
-    #                 possible_z,
-    #                 moebius_of_y) < (x.index(y)+2):
-    #             # If the largest possible N for which Z(n) == possible_z is
-    #             # a lower position than where y is, then this is impossible
-    #             possible = False
-    #         elif y in x and possible_z != Z(x.index(y)+2):
-    #             # If the Z we calculated doesn't match Z(n) for this, just
-    #             # exit.
-    #             possible = False
-    #         if possible:
-    #             # We couldn't rule out this possibility; update e
-    #             for i in range(min_idx[tuple(y)],max_idx[tuple(y)]+1):
-    #                 if x[i] in e[i]:
-    #                     e[i].remove(x[i])
-    #         if possible_z != -1:
-    #             calculated_keys.add(tuple(y))
-
-    #     #convert e to the idx, factorization pair
-    #     for x in e:
-    #        for z in e[x]:
-    #            logger.info("  Eliminating [n=%d,%s] based on: %s " % (x+2,str(z),str(y)))
-    #            eliminate += [[x, z]]
-    #            assert z != factorize(x+2)
-    # logger.debug("  Elimination possibilities completed")
-
-    # return eliminate, calculated_keys
+    return eliminate, calculated_keys
 
 
 
