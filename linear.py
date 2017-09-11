@@ -938,11 +938,11 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
 
 
 
-def all_eliminations(n, all_factorizations, finished, it_set, new_finished):
+def all_eliminations(n, all_factorizations, finished, new_finished):
     """ Returns factorizations for positions we can show are impossible. """
     global logger
 
-    min_idx, max_idx = ranges_for_z_calculations(n, all_factorizations, finished, it_set)
+    min_idx, max_idx = ranges_for_z_calculations(n, all_factorizations, finished, new_finished)
     logger.debug("  Generated upper and lower bounds for Z")
 
     return analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, min_idx, max_idx)
@@ -1064,16 +1064,17 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         logger.debug("  Ord_cache updated")
 
         # Find all the Z that we can analyze now to prune branches.
-        all_potential_useful_z = all_potentially_useful_z(all_factorizations,
-                                                          z_calculated,
-                                                          blocked_potential_useful_z,
-                                                          finished,
-                                                          new_finished)
+        all_potential_useful_z = new_finished
+        # all_potentially_useful_z(all_factorizations,
+        #                                                   z_calculated,
+        #                                                   blocked_potential_useful_z,
+        #                                                   finished,
+        #                                                   new_finished)
 
         logger.debug("  all_potentially_useful_z: %s"%all_potential_useful_z)
 
         if all_potential_useful_z:
-            new_eliminate, new_z_calculated = all_eliminations(n, all_factorizations, finished, all_potential_useful_z, new_finished)
+            new_eliminate, new_z_calculated = all_eliminations(n, all_factorizations, finished, new_finished)
             z_calculated |= set(tupletized(new_z_calculated))
 
             if new_eliminate:
