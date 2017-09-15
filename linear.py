@@ -695,6 +695,7 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
 
 def update_ord_cache(ord_cache, all_factorizations, finished, old_calls):
     """ Updates the ord_cache ord() uses. """
+    return
     for x in finished:
         for y in finished:
             if (tuple(x),tuple(y)) in ord_cache:
@@ -793,10 +794,16 @@ def ranges_for_z_calculations(n, all_factorizations, finished, it_set):
             if len(y) == 1:
                 possible_primes += y
 
-    max_idx = collections.defaultdict(lambda: 0)
-    min_idx = collections.defaultdict(lambda: 0)
+    min_idx = {}
+    max_idx = {}
+    mask = {}
 
     for y in it_set:
+        mask[y] = [False] * len(all_factorizations)
+
+        #if y == (2, 5, 5): pdb.set_trace()
+
+
         for p in possible_primes:
             # For each prime, try to find some index x_idx s.t
             # [p,p]*all_factorizations[x_idx] > y.  Keep track of the maximum
@@ -804,89 +811,129 @@ def ranges_for_z_calculations(n, all_factorizations, finished, it_set):
             found_upper_bound = False
 
             for x_idx in range(0, len(all_factorizations)):
-                all_lower = True
                 for z in all_factorizations[x_idx]:
+
+
                     v = sorted([p,p] + z)
                     val = ord_absolute(v,y,all_factorizations,finished)
 
                     if val == 99:
                         # This factorization we are unsure about; possibly
                         # update our min_idx.
-                        all_lower = False
-                        t, o = simplify(y, sorted([p,p]+z))
+
+                        t, o = simplify(v, y)
 
                         t_found, t_idx = index_recursive(all_factorizations, t)
-                        if not t_found or len(all_factorizations[t_idx])==1:
-                            # t is not yet generated; so there isn't an index
-                            # we can go into.  Just break here.  FixMe - Is
-                            # this correct?
-                            break
+                        t_found_last, t_idx_last = index_recursive(all_factorizations, t, last=True)
 
-                        min_idx[y] = min(min_idx[y],t_idx)
+                        for x in range(t_idx,t_idx_last+1):
+                            mask[y][x] = True
 
-                    elif val != 1:
-                        all_lower = False
-                        break
-                if all_lower:
-                    # There was at least one element in this index that was
-                    # higher than y; record this index as a possible max
+                        o_found, o_idx = index_recursive(all_factorizations, o)
+                        o_found_last, o_idx_last = index_recursive(all_factorizations, o, last=True)
 
-                    found_upper_bound = True
-                    t, o = simplify(y, sorted([p,p]+z))
-                    t_found, t_idx = index_recursive(all_factorizations, t, last=True)
+                        for x in range(o_idx,o_idx_last+1):
+                            mask[y][x] = True
 
-                    # FixMe: Are these the correct indexes?  Why up to x_idx if
-                    # we can't find t?  Or why t_idx if we can?
-                    if y in max_idx:
-                        if t_found:
-                            max_idx[y] = max(max_idx[y],t_idx)
-                        else:
-                            max_idx[y] = max(max_idx[y],x_idx)
+                    if z == list(y):
+                        mask[y][x_idx] = True
 
-                    else:
-                        if t_found:
-                            max_idx[y] = max(max_idx[y],t_idx)
-                        else:
-                            max_idx[y] = max(max_idx[y],x_idx)
-                    break
+        present = set()
+        for x_idx in range(0, len(all_factorizations)):
+            if mask[y][x_idx] == True:
+                for z in all_factorizations[x_idx]:
+                    present.add(tuple(z))
 
-            if not found_upper_bound:
-                # We couldn't find an a where [p*p*a] > y.  So we can't compute
-                # Z - delete the record from max_idx.
-                if y in max_idx:
-                    del max_idx[y]
-                if y in min_idx:
-                    del min_idx[y]
+        for x_idx in range(0, len(all_factorizations)):
+            if mask[y][x_idx] == False:
+                for z in all_factorizations[x_idx]:
+                    if tuple(z) in present:
+                        mask[y][x_idx] = True
+
+    return min_idx, max_idx, mask
+
+def analyze_z_for_factorizations_mask(n, all_factorizations, finished, new_finished, mask):
+    eliminate = []
+
+    for y in mask:
+        logger.debug("  About to analyze masked Z for y="+str(y))
+        e = copy.deepcopy(all_factorizations)
+        for idx in range(0, len(all_factorizations)):
+            if not mask[y][idx]:
+                e[idx] = []
+
+
+        for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
+            primes = [x[0] for x in x if len(x) == 1]
+
+            moebius_of_y = 0 # FixMe: move this out into a function
+            if len(set(y)) == len(y):
+                moebius_of_y = int(math.pow(-1,len(y)))
+
+
+            #if y == [2,3,5] and x[13] == [2,7]: pdb.set_trace()
+
+            y = list(y)
+            possible_z, idx = calculated_Z(y, primes, x)
+            possible = True
+            if possible_z == -1:
+                # We can't figure everything out; just go ahead and delete our work
+                # FixMe: This should be impossible
+                e = {}
                 break
 
-    return min_idx, max_idx
+            if ZIsPossible(possible_z,moebius_of_y) == -1:
+                # If there is no n where Z(n) == possible_z with the correct
+                # moebius, this is impossible.
+                possible = False
+            elif y in x and ZIsPossible(
+                    possible_z,
+                    moebius_of_y) < (x.index(y)+2):
+                # If the largest possible N for which Z(n) == possible_z is
+                # a lower position than where y is, then this is impossible
+                possible = False
+            elif y in x and possible_z != Z(x.index(y)+2):
+                # If the Z we calculated doesn't match Z(n) for this, just
+                # exit.
+                possible = False
+            if possible:
+                # We couldn't rule out this possibility; update e
+                for i in range(0, len(e)):
+                    if x[i] in e[i]:
+                        e[i].remove(x[i])
 
-def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, min_idx, max_idx):
+        for idx in range(0,len(e)):
+           for z in e[idx]:
+               logger.info("  Mask Eliminating [n=%d,%s] based on: %s " % (idx+2,str(z),str(y)))
+               eliminate += [[idx, z]]
+               assert z != factorize(idx+2)
+        logger.debug("  Done analyzing masked Z for y="+str(y))
+
+    return eliminate
+
+
+
+def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, min_idx, max_idx, mask):
     """ Finds what factorizations we can eliminate at which places, based on analyzing Z(f). """
 
     eliminate = []
     # list of [index, factorization] pairs that we can get rid of
-
     calculated_keys = set()
 
-    for y in max_idx:
-        # Iterate through everything we found we could find a 1 value for.
-
-        if y not in min_idx:
-            # Doesn't give us anything.
-            calculated_keys.add(y)
-            continue
+    for y in new_finished:
 
         # Populate e with every possibility in the range we're going through.
         # When we hit a possibility that works, we'll remove it from e.  The
         # ones that remain are what we can eliminate
+
         e = {}
         for x in range(min_idx[y],max_idx[y]+1):
             e[x] = copy.copy(all_factorizations[x])
 
-        for x in generate_all_possible_lists(all_factorizations,
-                                             min_idx[y],
-                                             max_idx[y]+1):
+
+        for x in generate_all_possible_lists(all_factorizations):
+                                             #min_idx[y],
+                                             #max_idx[y]+1):
             # For each possibility that we need to check, check a variety of
             # conditions for possibility.
             primes = [x[0] for x in x if len(x) == 1]
@@ -894,6 +941,9 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
             moebius_of_y = 0 # FixMe: move this out into a function
             if len(set(y)) == len(y):
                 moebius_of_y = int(math.pow(-1,len(y)))
+
+
+            #if y == [2,3,5] and x[13] == [2,7]: pdb.set_trace()
 
             y = list(y)
             possible_z, idx = calculated_Z(y, primes, x)
@@ -926,7 +976,7 @@ def analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, 
             if possible_z != -1:
                 calculated_keys.add(tuple(y))
 
-        #convert e to the idx, factorization pair
+        # Convert e to the idx, factorization pair
         for x in e:
            for z in e[x]:
                logger.info("  Eliminating [n=%d,%s] based on: %s " % (x+2,str(z),str(y)))
@@ -942,10 +992,22 @@ def all_eliminations(n, all_factorizations, finished, new_finished):
     """ Returns factorizations for positions we can show are impossible. """
     global logger
 
-    min_idx, max_idx = ranges_for_z_calculations(n, all_factorizations, finished, new_finished)
-    logger.debug("  Generated upper and lower bounds for Z")
+    min_idx, max_idx, mask = ranges_for_z_calculations(n, all_factorizations, finished, new_finished)
 
-    return analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, min_idx, max_idx)
+
+    logger.debug("  Generated upper and lower bounds for Z: "+str(min_idx)+ " " + str(max_idx))
+    logger.debug("  mask: "+str(mask))
+    min_idx = {}
+    max_idx = {}
+    for x in new_finished:
+        min_idx[x] = 0
+        max_idx[x] = len(all_factorizations)-1
+
+    #e, f = analyze_z_for_factorizations(n, all_factorizations, finished, new_finished, min_idx, max_idx, mask)
+
+    e_ = analyze_z_for_factorizations_mask(n, all_factorizations, finished, new_finished, mask)
+
+    return e_, []
 
 
 def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=[]):
@@ -1061,17 +1123,10 @@ def generate_factorization_possibilities(max_n, start_n = 2, all_factorizations=
         old_calls = copy.copy(calls)
         calls.clear()
         update_ord_cache(ord_cache, all_factorizations, finished, old_calls)
-        logger.debug("  Ord_cache updated")
 
-        # Find all the Z that we can analyze now to prune branches.
         all_potential_useful_z = new_finished
-        # all_potentially_useful_z(all_factorizations,
-        #                                                   z_calculated,
-        #                                                   blocked_potential_useful_z,
-        #                                                   finished,
-        #                                                   new_finished)
 
-        logger.debug("  all_potentially_useful_z: %s"%all_potential_useful_z)
+        logger.debug("  new_finished: %s"%all_potential_useful_z)
 
         if all_potential_useful_z:
             new_eliminate, new_z_calculated = all_eliminations(n, all_factorizations, finished, new_finished)
