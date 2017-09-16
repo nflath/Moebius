@@ -325,12 +325,13 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, finished, al
         r += [[n]]
         # Always a possibility of being prime
     smallest = None
-    max_idx = None
+    max_idx = 0
 
     #if n == 47: pdb.set_trace()
 
     for p in primes:
 
+        found = False
         for f_idx in range(0, len(factorizations)):
 
             f = factorizations[f_idx]
@@ -353,11 +354,15 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, finished, al
                     r += [x]
 
             if break_:
+                found = True
                 if not max_idx:
-                    max_idx = f_idx
+                    max_idx = max(max_idx, f_idx)
                     if [p] in factorizations:
-                        max_idx = max(f_idx,factorizations.index([p]))
+                        max_idx = max(max_idx,factorizations.index([p]))
                 break
+        if not found:
+            max_idx = len(factorizations)
+
 
     return r, max_idx
 
@@ -672,6 +677,7 @@ def generate_possibilities_for_factorization(n, m, factorizations, finished, all
         return r
 
     elif m == 1:
+        if n == 77: pdb.set_trace()
         r, max_idx = new_unique_prime_factorizations(
             n, False, primes, factorizations, finished, all_factorizations)
 
