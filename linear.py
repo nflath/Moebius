@@ -14,8 +14,14 @@ class FactorizationPossibilities(object):
 
     def __init__(self):
         self.all_factorizations = []
+        self.reverse_idx = collections.defaultdict(list)
         self.finished = set()
         self.outstanding = set()
+
+    def update_reverse_idx(self):
+        n = len(self.all_factorizations) - 1
+        for z in self.all_factorizations[n]:
+            self.reverse_idx[tuple(z)].append(n)
 
     def __getitem__(self, key):
         return self.all_factorizations[key]
@@ -1001,10 +1007,12 @@ def generate_factorization_possibilities(max_n, start_n = 2):
         assert factorize(n) in new
 
         all_factorizations.all_factorizations += [sorted(new)]
+        all_factorizations.update_reverse_idx()
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = update_outstanding_and_finished(all_factorizations, new)
+
         logger.debug("  outstanding processing finished: outstanding=%s new_finished=%s",all_factorizations.outstanding,new_finished)
 
         all_potential_useful_z = new_finished
