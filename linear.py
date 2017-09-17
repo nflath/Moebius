@@ -185,6 +185,11 @@ def ord(this, other, factorizations):
 
     calls[(tuple(t),tuple(o),)] += 1
 
+
+    if not (t in factorizations or o in factorizations):
+        pass
+        #pdb.set_trace()
+
     for t_begin_len in range(0, len(t)):
         for o_begin_len in range(0, int(len(o))):
             for t_tmp_begin in itertools.combinations(t, t_begin_len):
@@ -816,22 +821,26 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                     if z == list(y):
                         mask[y][x_idx] = True
 
-        present = set()
-        for x_idx in range(0, len(all_factorizations)):
-            if mask[y][x_idx] == True:
-                for z in all_factorizations[x_idx]:
-                    present.add(tuple(z))
+        for x in range(0,2):
+            present = set()
+            for x_idx in range(0, len(all_factorizations)):
+                if mask[y][x_idx] == True:
+                    for z in all_factorizations[x_idx]:
+                        present.add(tuple(z))
 
-        for x_idx in range(0, len(all_factorizations)):
-            if mask[y][x_idx] == False:
-                for z in all_factorizations[x_idx]:
-                    if tuple(z) in present:
-                        mask[y][x_idx] = True
+            for x_idx in range(0, len(all_factorizations)):
+                if mask[y][x_idx] == False:
+                    for z in all_factorizations[x_idx]:
+                        if tuple(z) in present:
+                            mask[y][x_idx] = True
 
     return min_idx, max_idx, mask
 
+brk = False
 def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask):
     eliminate = []
+    global brk
+    if n == 68: pdb.set_trace()
 
     for y in mask:
         logger.debug("  About to analyze masked Z for y="+str(y))
@@ -840,16 +849,16 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
             if not mask[y][idx]:
                 e[idx] = []
 
-
         for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
+            if n == 68 and x[55]==[3,19] and brk: pdb.set_trace()
             primes = [x[0] for x in x if len(x) == 1]
 
             moebius_of_y = 0 # FixMe: move this out into a function
             if len(set(y)) == len(y):
                 moebius_of_y = int(math.pow(-1,len(y)))
 
-
-            #if y == [2,3,5] and x[13] == [2,7]: pdb.set_trace()
+            if list(y) not in x:
+                continue
 
             y = list(y)
             possible_z, idx = calculated_Z(y, primes, x)
@@ -857,10 +866,10 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
             if possible_z == -1:
                 # We can't figure everything out; just go ahead and delete our work
                 # FixMe: This should be impossible
+                assert False
                 e = {}
                 break
-
-            if ZIsPossible(possible_z,moebius_of_y) == -1:
+            elif ZIsPossible(possible_z,moebius_of_y) == -1:
                 # If there is no n where Z(n) == possible_z with the correct
                 # moebius, this is impossible.
                 possible = False
