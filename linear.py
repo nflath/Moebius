@@ -170,66 +170,22 @@ def ord(this, other, factorizations):
         ord_cache_hits += 1
         return ord_cache[(tuple(this),tuple(other),)]
 
-    t, o = simplify(this, other)
+    assert other in factorizations
 
-    if not t and o:
-        return -1
-    elif not o and t:
+    if this not in factorizations:
         return 1
-    if not t and not o:
+
+    if this == other:
         return 0
 
-    if (tuple(t),tuple(o),) in ord_cache:
-        ord_cache_hits += 1
-        return ord_cache[(tuple(t),tuple(o),)]
+    tidx = factorizations.index(this)
+    oidx = factorizations.index(other)
+    if tidx < oidx:
+        return -1
 
-    calls[(tuple(t),tuple(o),)] += 1
-
-
-    if not (t in factorizations or o in factorizations):
-        pass
-        #pdb.set_trace()
-
-    for t_begin_len in range(0, len(t)):
-        for o_begin_len in range(0, int(len(o))):
-            for t_tmp_begin in itertools.combinations(t, t_begin_len):
-                for o_tmp_begin in itertools.combinations(o, o_begin_len):
-
-                    t_tmp_begin = sorted(list(t_tmp_begin))
-                    o_tmp_begin = sorted(list(o_tmp_begin))
-                    t_tmp_end = copy.copy(t)
-                    o_tmp_end = copy.copy(o)
-
-                    for x in t_tmp_begin:
-                        t_tmp_end.remove(x)
-
-                    for x in o_tmp_begin:
-                        o_tmp_end.remove(x)
-
-                    if t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
-                        val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if val == -1:
-                            return -1
-                        elif val == 1:
-                            return 1
-                    elif t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
-                        begin_val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
-                        end_val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if (begin_val == -1 and end_val == -1) or \
-                          (begin_val == -1 and end_val == 0) or \
-                          (begin_val == 0 and end_val == -1):
-                            return -1
-                        elif begin_val == 1 and end_val == 1:
-                            return 1
-                    elif t_tmp_begin and o_tmp_begin and not t_tmp_end and not o_tmp_end:
-                        val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
-                        if val == -1:
-                            return -1
-                        elif val == 1:
-                            return 1
-
-
-    return 99
+    if tidx > oidx:
+        return 1
+    assert False
 
 @memoized
 def Z(n):
@@ -836,11 +792,8 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
 
     return min_idx, max_idx, mask
 
-brk = False
 def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask):
     eliminate = []
-    global brk
-    if n == 68: pdb.set_trace()
 
     for y in mask:
         logger.debug("  About to analyze masked Z for y="+str(y))
@@ -850,7 +803,6 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 e[idx] = []
 
         for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
-            if n == 68 and x[55]==[3,19] and brk: pdb.set_trace()
             primes = [x[0] for x in x if len(x) == 1]
 
             moebius_of_y = 0 # FixMe: move this out into a function
