@@ -781,8 +781,14 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
     max_idx = {}
     mask = {}
 
+
+
     for y in it_set:
+        d = set()
+        d.add(y)
+
         mask[y] = [False] * len(all_factorizations)
+
 
         #if y == (2, 5, 5): pdb.set_trace()
 
@@ -792,10 +798,12 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             # [p,p]*all_factorizations[x_idx] > y.  Keep track of the maximum
             # of these.
             found_upper_bound = False
+            primes = []
 
             for x_idx in range(0, len(all_factorizations)):
                 for z in all_factorizations[x_idx]:
 
+                    if len(z) == 1: primes += z
 
                     v = sorted([p,p] + z)
                     val = ord_absolute(v,y,all_factorizations)
@@ -816,11 +824,27 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         o_found_last, o_idx_last = index_recursive(all_factorizations, o, last=True)
 
                         for x in range(o_idx,o_idx_last+1):
+                            if n == 51 and x == 0: pdb.set_trace()
                             mask[y][x] = True
 
                     if z == list(y):
                         mask[y][x_idx] = True
 
+#                    if n == 46 and x_idx==19 and y == (2,2,11): pdb.set_trace()
+                    found = False
+                    for d_ in d:
+                        if list(z) == sorted(list(d_)+[p]):
+                          mask[y][x_idx] = True
+                          found = True
+                    if list(y) == sorted(z + [p]):
+                        mask[y][x_idx] = True
+                        found = True
+                    if found:
+                       for z_ in all_factorizations[x_idx]:
+                           d.add(tuple(z_))
+
+                    #if len(z) == 1 and len(all_factorizations[x_idx]) > 1:
+                    #mask[y][x_idx] = True
         for x in range(0,2):
             present = set()
             for x_idx in range(0, len(all_factorizations)):
@@ -835,6 +859,89 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                             mask[y][x_idx] = True
 
     return min_idx, max_idx, mask
+
+def is_consistent(n, factorization, all_factorizations, y, mask):
+    if len(y) == 1:
+        return True
+
+    yi = factorization.index(list(y))
+
+    primes = set()
+
+    for idx in range(0,len(y)):
+        p = y[idx]
+
+        rest = y[:idx] + y[idx+1:]
+
+        lt = True
+
+        i = -1
+        for x in factorization:
+            i = i + 1
+
+
+            if not mask[i]:
+                for z in all_factorizations[i]:
+                    if len(z) == 1:
+                        primes.add(tuple(z))
+
+                continue
+
+            if len(x)==1:
+                primes.add(tuple(x))
+
+
+            for p_ in x:
+                if tuple([p_]) not in primes:
+                    # pdb.set_trace()
+                    if n == 57: pdb.set_trace()
+                    return False
+                    pass
+
+            if x == rest:
+                if n == 60 and factorization == [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23], [2, 2, 2, 3], [5, 5], [2, 13], [2, 2, 7], [3, 3, 3], [2, 3, 5], [30], [31], [2, 2, 2, 2, 2], [2, 17], [3, 11], [5, 7], [2, 2, 3, 3], [37], [2, 19], [3, 13], [2, 2, 2, 5], [2, 3, 7], [42], [43], [2, 2, 11], [3, 3, 5], [2, 23], [47], [2, 2, 2, 2, 3], [2, 5, 5], [2, 2, 13], [3, 17], [7, 7], [53], [2, 2, 2, 7], [2, 29], [2, 3, 3, 3], [2, 30], [3, 19], [59], [2, 2, 3, 5]] and list(y) == [2,2,3,5]:
+                    #pdb.set_trace()
+                    pass
+                lt = False
+                continue
+
+            if lt:
+                v = sorted([p] + x)
+                if v not in factorization:
+                    if tuple(v) in all_factorizations.finished and \
+                      all_factorizations.reverse_idx[tuple(v)][-1] < factorization.index(y):
+                        continue
+                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
+                    return False
+                vi = factorization.index(v)
+
+                if vi >= yi:
+                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
+                    return False
+
+            else:
+                v = sorted([p] + x)
+                if n == 60:
+                    if factorization == [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23], [2, 2, 2, 3], [5, 5], [2, 13], [2, 2, 7], [3, 3, 3], [2, 3, 5], [30], [31], [2, 2, 2, 2, 2], [2, 17], [3, 11], [5, 7], [2, 2, 3, 3], [37], [2, 19], [3, 13], [2, 2, 2, 5], [2, 3, 7], [42], [43], [2, 2, 11], [3, 3, 5], [2, 23], [47], [2, 2, 2, 2, 3], [2, 5, 5], [2, 2, 13], [3, 17], [7, 7], [53], [2, 2, 2, 7], [2, 29], [2, 3, 3, 3], [2, 30], [3, 19], [59], [2, 2, 3, 5]]:
+                        #if v == [2, 30]: pdb.set_trace()
+                        pass
+                if v not in factorization:
+                    if ((tuple(v) not in all_factorizations.finished) or
+                        (tuple(v) in all_factorizations.finished and \
+                        all_factorizations.reverse_idx[tuple(v)][0] > factorization.index(y)) or
+                        len(all_factorizations.reverse_idx[tuple(v)])==0):
+                        continue
+                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
+                    # if n == 46 and factorization[27] == [29] and [2,3,7] in factorization: pdb.set_trace()
+                    return False
+
+                vi = factorization.index(v)
+
+                if vi <= yi:
+                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
+                    return False
+
+    return True
 
 brk = False
 def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask):
@@ -883,7 +990,12 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 # If the Z we calculated doesn't match Z(n) for this, just
                 # exit.
                 possible = False
+            elif not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
+                #if n == 60 and x[27]==[29] and x[29]==[31]: pdb.set_trace()
+                possible = False
+
             if possible:
+                if n==60 and x[27]==[2,3,5] and y == [2,2,3,5]: pdb.set_trace()
                 # We couldn't rule out this possibility; update e
                 for i in range(0, len(e)):
                     if x[i] in e[i]:
@@ -893,7 +1005,9 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
            for z in e[idx]:
                logger.info("  Mask Eliminating [n=%d,%s] based on: %s " % (idx+2,str(z),str(y)))
                eliminate += [[idx, z]]
-               assert z != factorize(idx+2)
+               if z == factorize(idx+2):
+                   pdb.set_trace()
+                   assert False
         logger.debug("  Done analyzing masked Z for y="+str(y))
 
     return eliminate
