@@ -256,6 +256,20 @@ def ZIsPossible(z, m):
     return n_max
 
 @memoized
+def Z1IsPossible(z, m):
+    """ Given z and m, return the last possible index it could occur at (-1 if impossible)"""
+    n = 2
+    z_ = 0
+    n_max = -1
+    while z_ <= z:
+        m_ = moebius(n)
+        z_ = Z1(n)
+        if z_ == z and m_ == m:
+            n_max = n
+        n += 1
+    return n_max
+
+@memoized
 def factorize(n):
     """Returns the factorization of n"""
 
@@ -594,7 +608,7 @@ def update_outstanding_and_finished(all_factorizations, new):
                 applicable += [x for x in all_factorizations if y in x and x not in applicable]
 
         if applicable:
-            for factorizations in generate_all_possible_lists(applicable,0,0):
+            for factorizations in generate_all_possible_lists(applicable,0,0,False):
                 if list(o) not in factorizations:
                     in_all = False
                     break
@@ -781,8 +795,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
     max_idx = {}
     mask = {}
 
-
-
     for y in it_set:
         d = set()
         d.add(y)
@@ -803,7 +815,8 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             for x_idx in range(0, len(all_factorizations)):
                 for z in all_factorizations[x_idx]:
 
-                    if len(z) == 1: primes += z
+                    if len(z) == 1:
+                        primes += z
 
                     v = sorted([p,p] + z)
                     val = ord_absolute(v,y,all_factorizations)
@@ -826,6 +839,29 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         for x in range(o_idx,o_idx_last+1):
                             if n == 51 and x == 0: pdb.set_trace()
                             mask[y][x] = True
+
+                    v = sorted([p] + z)
+                    if len(v) == len(set(v)) and (len(set(v)) % 2) == 1:
+                        val = ord_absolute(v,y,all_factorizations)
+
+                        if val == 99:
+                            # This factorization we are unsure about; possibly
+                            # update our min_idx.
+
+                            t, o = simplify(v, y)
+
+                            t_found, t_idx = index_recursive(all_factorizations, t)
+                            t_found_last, t_idx_last = index_recursive(all_factorizations, t, last=True)
+
+                            for x in range(t_idx,t_idx_last+1):
+                                mask[y][x] = True
+
+                            o_found, o_idx = index_recursive(all_factorizations, o)
+                            o_found_last, o_idx_last = index_recursive(all_factorizations, o, last=True)
+
+                            for x in range(o_idx,o_idx_last+1):
+                                if n == 51 and x == 0: pdb.set_trace()
+                                mask[y][x] = True
 
                     if z == list(y):
                         mask[y][x_idx] = True
@@ -921,8 +957,8 @@ def is_consistent(n, factorization, all_factorizations, y, mask):
 
             else:
                 v = sorted([p] + x)
-                if n == 60:
-                    if factorization == [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23], [2, 2, 2, 3], [5, 5], [2, 13], [2, 2, 7], [3, 3, 3], [2, 3, 5], [30], [31], [2, 2, 2, 2, 2], [2, 17], [3, 11], [5, 7], [2, 2, 3, 3], [37], [2, 19], [3, 13], [2, 2, 2, 5], [2, 3, 7], [42], [43], [2, 2, 11], [3, 3, 5], [2, 23], [47], [2, 2, 2, 2, 3], [2, 5, 5], [2, 2, 13], [3, 17], [7, 7], [53], [2, 2, 2, 7], [2, 29], [2, 3, 3, 3], [2, 30], [3, 19], [59], [2, 2, 3, 5]]:
+                if n == 60 and list(y) == [2,2,3,5]:
+                        #pdb.set_trace()
                         #if v == [2, 30]: pdb.set_trace()
                         pass
                 if v not in factorization:
@@ -968,25 +1004,34 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 continue
 
             y = list(y)
+            #pdb.set_trace()
+
+            if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
+                #if n == 60 and x[27]==[29] and x[29]==[31]: pdb.set_trace()
+                continue
+
             possible_z, idx = calculated_Z(y, primes, x)
+            possible_z1 = calculated_Z1(y, primes, x)
+
             possible = True
-            if possible_z == -1:
+            if possible_z1 == -1 or possible_z == -1 or y not in x:
                 # We can't figure everything out; just go ahead and delete our work
                 # FixMe: This should be impossible
                 assert False
                 e = {}
                 break
-            elif ZIsPossible(possible_z,moebius_of_y) == -1:
+            elif ZIsPossible(possible_z,moebius_of_y) == -1 or \
+                 Z1IsPossible(possible_z1,moebius_of_y) == -1:
                 # If there is no n where Z(n) == possible_z with the correct
                 # moebius, this is impossible.
                 possible = False
-            elif y in x and ZIsPossible(
-                    possible_z,
-                    moebius_of_y) < (x.index(y)+2):
+            elif (((ZIsPossible(possible_z,moebius_of_y) < (x.index(y)+2)))) or \
+              (((Z1IsPossible(possible_z1,moebius_of_y) < (x.index(y)+2)))):
                 # If the largest possible N for which Z(n) == possible_z is
                 # a lower position than where y is, then this is impossible
                 possible = False
-            elif y in x and possible_z != Z(x.index(y)+2):
+            elif (possible_z != Z(x.index(y)+2)) or \
+              (possible_z1 != Z1(x.index(y)+2)):
                 # If the Z we calculated doesn't match Z(n) for this, just
                 # exit.
                 possible = False
@@ -995,8 +1040,10 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 possible = False
 
             if possible:
-                if n==60 and x[27]==[2,3,5] and y == [2,2,3,5]: pdb.set_trace()
-                # We couldn't rule out this possibility; update e
+                if n == 60 and list(y) == [2,2,3,5] and x[29]==[2,3,5]:
+                    logger.info("Still remaining: ")
+                    for i in range(0, len(x)):
+                        logger.info("  "+str(i+2) + " " + str(x[i]))
                 for i in range(0, len(e)):
                     if x[i] in e[i]:
                         e[i].remove(x[i])
