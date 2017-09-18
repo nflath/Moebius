@@ -8,9 +8,27 @@ import itertools
 import logging
 from functools import reduce
 from util import *
-# Naming conventions:
+
+# FixMe: Factorizations should always be represented as a tuple.
+
+# Global logger
+logger = None
 
 class FactorizationPossibilities(object):
+    # Represents the 'tree' of factorization possibilities.  Not represented as
+    # a tree for performance reasons; instead, a list-of-lists, where
+    # all_factorizations[i] is a list of all possible factorizations of i.
+    #
+    # Fields: all_factorizations - the master list of lists
+    # reverse_idx: Maps from a factorization to each index it is located in.
+    # Finished - All factorizations that will not appear as a possibility in a future
+    #   index
+    # Outstanding - All factorizations that are in the list that may appear
+    # in a future index
+
+    # FixMe: Move more functionality into this class:
+    #   - (index_recursive)
+    #   - Updating finished/outstanding/reverse_idx
 
     def __init__(self):
         self.all_factorizations = []
@@ -19,6 +37,10 @@ class FactorizationPossibilities(object):
         self.outstanding = set()
 
     def update_reverse_idx(self):
+        # Should be called after updating self.all_factorizations FixMe: Should
+        # not be exposed externally, there should be some function that
+        # updates all_factorizations, finsihed, outstanding, reverse_idx atomically
+
         n = len(self.all_factorizations) - 1
         for z in self.all_factorizations[n]:
             self.reverse_idx[tuple(z)].append(n)
@@ -29,10 +51,8 @@ class FactorizationPossibilities(object):
     def __len__(self):
         return len(self.all_factorizations)
 
-
-# Set up the logger
-logger = None
 def setupLogger():
+    """Set up the global logger to be used by this module."""
     global logger
     logger = logging.getLogger('Moebius')
     logger.setLevel(logging.DEBUG)
@@ -47,7 +67,11 @@ def setupLogger():
     logger.addHandler(ch)
 
 def calculated_Z(f, primes, factorizations):
-    """Calculates Z(f)."""
+    """Calculates Z(f).
+
+    For each prime 'p', counts the number of factorizations 'a' where
+    p*p*a <= f .  Returns the total number of cases this is true for."""
+
     count = 0
     max_idx = 0
     in_ = set()
@@ -73,7 +97,7 @@ def calculated_Z(f, primes, factorizations):
     return len(in_), None
 
 def calculated_Z1(f, primes, factorizations):
-    """Calculates Z(f).
+    """Calculates Z1(f).
 
     For each prime 'p', counts the number of factorizations 'a' where
     p*a <= f and moebius(p*a)==1.  Returns the total number of cases
@@ -99,16 +123,18 @@ def calculated_Z1(f, primes, factorizations):
                 break
     return len(in_)
 
-def ord_no_permutation(t, o, factorizations):
-    """Returns whether we can show t < o or not just based on the given factorization.
 
-    Will simplify t and o, but not go through all comparison of factors
+def ord(this, other, factorizations):
+    """Returns whether this < other for a specific factorization possibility.
 
-    Returns -1 if t < o, 0 if t == 0, 1 if o > t, 99 if unknown
+    Check each permutation and 2-way split of this and other to try and
+    find one where both parts of this are less than the parts of
+    other.
 
+    Returns -1 if t < 0, 0 if t == 0, 1 if t > o
     """
-    # If either t or o are eliminated, one is larger than the other(or both
-    # are equal).
+    t, o = simplify(this, other)
+
     if not t and not o:
         return 0
     if not t:
@@ -118,9 +144,6 @@ def ord_no_permutation(t, o, factorizations):
 
     t_index = None
     o_index = None
-    global ord_cache
-    if (tuple(t), tuple(o)) in ord_cache:
-        return ord_cache[tuple(t), tuple(o)]
 
     try:
         t_index = factorizations.index(t)
@@ -146,90 +169,7 @@ def ord_no_permutation(t, o, factorizations):
     if o_found and o_index < t_index:
         return 1
 
-    return 99
-
-
-calls = collections.defaultdict(lambda : 0)
-ord_cache = {}
-ord_cache_hits = 0
-ord_calls = 0
-
-def ord(this, other, factorizations):
-    """Returns whether this < other in a more complicated way.
-
-    Check each permutation and 2-way split of this and other to try and
-    find one where both parts of this are less than the parts of
-    other.
-
-    Returns -1 if t < 0, 0 if t == 0, 1 if t > o, 99 if unknown
-    """
-    global ord_cache, ord_cache_hits, ord_calls, calls
-
-    ord_calls += 1
-    if (tuple(this),tuple(other),) in ord_cache:
-        ord_cache_hits += 1
-        return ord_cache[(tuple(this),tuple(other),)]
-
-    t, o = simplify(this, other)
-
-    if not t and o:
-        return -1
-    elif not o and t:
-        return 1
-    if not t and not o:
-        return 0
-
-    if (tuple(t),tuple(o),) in ord_cache:
-        ord_cache_hits += 1
-        return ord_cache[(tuple(t),tuple(o),)]
-
-    calls[(tuple(t),tuple(o),)] += 1
-
-
-    if not (t in factorizations or o in factorizations):
-        pass
-        #pdb.set_trace()
-
-    for t_begin_len in range(0, len(t)):
-        for o_begin_len in range(0, int(len(o))):
-            for t_tmp_begin in itertools.combinations(t, t_begin_len):
-                for o_tmp_begin in itertools.combinations(o, o_begin_len):
-
-                    t_tmp_begin = sorted(list(t_tmp_begin))
-                    o_tmp_begin = sorted(list(o_tmp_begin))
-                    t_tmp_end = copy.copy(t)
-                    o_tmp_end = copy.copy(o)
-
-                    for x in t_tmp_begin:
-                        t_tmp_end.remove(x)
-
-                    for x in o_tmp_begin:
-                        o_tmp_end.remove(x)
-
-                    if t_tmp_end and o_tmp_end and not t_tmp_begin and not o_tmp_begin:
-                        val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if val == -1:
-                            return -1
-                        elif val == 1:
-                            return 1
-                    elif t_tmp_begin and t_tmp_end and o_tmp_begin and o_tmp_end:
-                        begin_val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
-                        end_val = ord_no_permutation(t_tmp_end, o_tmp_end, factorizations)
-                        if (begin_val == -1 and end_val == -1) or \
-                          (begin_val == -1 and end_val == 0) or \
-                          (begin_val == 0 and end_val == -1):
-                            return -1
-                        elif begin_val == 1 and end_val == 1:
-                            return 1
-                    elif t_tmp_begin and o_tmp_begin and not t_tmp_end and not o_tmp_end:
-                        val = ord_no_permutation(t_tmp_begin, o_tmp_begin, factorizations)
-                        if val == -1:
-                            return -1
-                        elif val == 1:
-                            return 1
-
-
-    return 99
+    assert False
 
 @memoized
 def Z(n):
@@ -241,6 +181,7 @@ def Z1(n):
     """ Returns the real Z(n)"""
     return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
 
+# FixMe: Merge ZIsPossible and Z1IsPossible
 @memoized
 def ZIsPossible(z, m):
     """ Given z and m, return the last possible index it could occur at (-1 if impossible)"""
@@ -360,12 +301,11 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
     """
     r = []
     if odd:
+        # There is always the possibility of being prime
         r += [[n]]
-        # Always a possibility of being prime
+
     smallest = None
     max_idx = 0
-
-    #if n == 47: pdb.set_trace()
 
     for p in primes:
 
@@ -437,7 +377,6 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizati
         primes_finished.add(prime)
         other = possibility[:i] + possibility[i + 1:]
 
-
         found, idx = index_recursive(all_factorizations, other)
         if not found:
             return None, f, True
@@ -455,7 +394,7 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizati
             if ord(possibility,i,factorizations) == -1:
                 return None, f, True
 
-    return possibility, f, True
+    return possibility, f, True#not(tuple(possibility) in all_factorizations.outstanding)
 
 
 new_repeated_prime_factorizations_cache = {}
@@ -474,12 +413,6 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
 
     cached_starts = {}
     tpl = tupletized(factorizations)
-    # for x in range(1,len(tpl)):
-    #     if (n, tpl[:-x]) in new_repeated_prime_factorizations_cache:
-    #         cached_starts = new_repeated_prime_factorizations_cache[(n, tpl[:-x])]
-    #         break
-    new_cached_starts = {}
-    #if n == 4: pdb.set_trace()
     for p in primes:
 
         start = 0
@@ -492,7 +425,6 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
 
             if smallest is not None and f == smallest:
                 if max_idx is None: max_idx = f_idx
-                new_cached_starts[p] = f_idx
                 break
 
             r_, smallest, break_ = one_repeated_prime_factor(
@@ -505,12 +437,9 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
             if break_:
                 if max_idx is None:
                     max_idx = f_idx
-                new_cached_starts[p] = f_idx
                 break
         if max_idx is None:
-            #pdb.set_trace()
             max_idx = -1
-    new_repeated_prime_factorizations_cache[(n, tpl)] = new_cached_starts
     return r, max_idx
 
 def prune_elements_lt(factorizations, factorization, all_factorizations):
@@ -539,6 +468,7 @@ def prune_elements_lt(factorizations, factorization, all_factorizations):
     return keep
 
 def ord_absolute(t, o, all_factorizations):
+    # Returns whether t < o given the entire list of factorizations.  99 is unknown
     t, o = simplify(t,o)
     if not t and not o:
         return 0
@@ -580,7 +510,6 @@ def ord_absolute(t, o, all_factorizations):
         return 1
 
     return 99
-
 
 
 def update_outstanding_and_finished(all_factorizations, new):
@@ -695,6 +624,15 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
             max_idx = len(factorizations)
 
         if(max_idx) != -1:
+
+            # try:
+            #     while [x for x in all_factorizations[max_idx] if len(x)==1]:
+            #         max_idx += 1
+            # except:
+            #     end[0] = -1
+            #     return r
+
+
             max_idx += 1
 
             found = False
@@ -720,6 +658,9 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
 
         if not max_idx:
             max_idx = -1
+
+        while [x for x in all_factorizations[max_idx] if len(x)==1]:
+            max_idx += 1
 
         max_idx += 1
 
@@ -979,11 +920,8 @@ def is_consistent(n, factorization, all_factorizations, y, mask):
 
     return True
 
-brk = False
 def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask):
     eliminate = []
-    global brk
-    if n == 68: pdb.set_trace()
 
     for y in mask:
         logger.debug("  About to analyze masked Z for y="+str(y))
@@ -993,7 +931,7 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 e[idx] = []
 
         for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
-            if n == 68 and x[55]==[3,19] and brk: pdb.set_trace()
+
             primes = [x[0] for x in x if len(x) == 1]
 
             moebius_of_y = 0 # FixMe: move this out into a function
@@ -1174,6 +1112,7 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 
 
         logger.debug("  Initial possibilities: %s"%(str(new)))
+
         assert factorize(n) in new
 
         all_factorizations.all_factorizations += [sorted(new)]
@@ -1230,5 +1169,3 @@ if __name__ == "__main__":
             print(n + 2, f[n])
 
     main()
-
-# FixMe: Convert to using tuples everywhere
