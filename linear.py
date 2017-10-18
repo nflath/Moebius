@@ -350,7 +350,6 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizati
 
     if len(possibility) == len(set(possibility)):
         # The possibility does not have a repeated prime; just return
-
         # FixMe: If this is not in the results list, we should update
         # smallest_factorization_idx and return, right?
         return None, smallest, False
@@ -366,31 +365,31 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizati
 
     primes_finished = set()
 
-    for i in range(0, len(possibility)):
-        # Go through all factorizations before 'potential' and ensure that no
-        # factorization * p is lower than potential * p but doesn't exist.
-        prime = possibility[i]
-        if prime in primes_finished:
-            continue
-        primes_finished.add(prime)
-        other = possibility[:i] + possibility[i + 1:]
+    # for i in range(0, len(possibility)):
+    #     # Go through all factorizations before 'potential' and ensure that no
+    #     # factorization * p is lower than potential * p but doesn't exist.
+    #     prime = possibility[i]
+    #     if prime in primes_finished:
+    #         continue
+    #     primes_finished.add(prime)
+    #     other = possibility[:i] + possibility[i + 1:]
 
-        found, idx = index_recursive(all_factorizations, other)
-        if not found:
-            return None, f, True
+    #     found, idx = index_recursive(all_factorizations, other)
+    #     if not found:
+    #         return None, f, True
 
 
-        for i in range(0, idx):
-           for y in all_factorizations[i]:
-               x = sorted([prime] + y)
-               found, _ = index_recursive(all_factorizations, x)
-               _, idx__ = index_recursive(all_factorizations, y, last=True)
-               if idx__ < idx and not found:
-                  return None, f,  True
+    #     for i in range(0, idx):
+    #        for y in all_factorizations[i]:
+    #            x = sorted([prime] + y)
+    #            found, _ = index_recursive(all_factorizations, x)
+    #            _, idx__ = index_recursive(all_factorizations, y, last=True)
+    #            if idx__ < idx and not found:
+    #               return None, f,  True
 
-        for i in factorizations:
-            if ord(possibility,i,factorizations) == -1:
-                return None, f, True
+    #     for i in factorizations:
+    #         if ord(possibility,i,factorizations) == -1:
+    #             return None, f, True
 
 
     return possibility, f, True
@@ -1293,9 +1292,6 @@ def probability(n,period):
         for x in periodic_zeroes[v]:
             print("{:.4f}".format(x),"\t",end="")
         print()
-
-
-
 
 if __name__ == "__main__":
     def main():
