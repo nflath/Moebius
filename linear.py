@@ -260,16 +260,16 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest, al
     """
     # FixMe: This and one_repeated_prime_factorization are similar.  Merge if
     # possible.
-    possibility = sorted(potential + [p])
-
-    result = []
     if p == smallest:
         # FixMe: Move this out of this function into the containing one
         return [], smallest, True
-    if possibility in factorizations or tuple(possibility) in all_factorizations.finished:
-        # Alread found this or it has a repeated prime
+    if p in potential:
         return [], smallest, False
-    if len(set(possibility)) != len(possibility):
+
+    possibility = sorted(potential + [p])
+
+    if tuple(possibility) in all_factorizations.finished or possibility in factorizations:
+        # Alread found this or it has a repeated prime
         return [], smallest, False
 
 
