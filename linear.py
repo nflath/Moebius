@@ -123,8 +123,14 @@ def calculated_Z1(f, primes, factorizations):
                 break
     return len(in_)
 
-
 def ord(this, other, factorizations):
+    t, o = simplify(this, other)
+    # if ord_(this, other, factorizations) != ord_(t, o, factorizations):
+    #     pdb.set_trace()
+    return ord_(t, o, factorizations)
+
+
+def ord_(t, o, factorizations):
     """Returns whether this < other for a specific factorization possibility.
 
     Check each permutation and 2-way split of this and other to try and
@@ -133,9 +139,8 @@ def ord(this, other, factorizations):
 
     Returns -1 if t < 0, 0 if t == 0, 1 if t > o
     """
-    t, o = simplify(this, other)
 
-    if not t and not o:
+    if not t and not o or t == o:
         return 0
     if not t:
         return -1
@@ -169,6 +174,7 @@ def ord(this, other, factorizations):
     if o_found and o_index < t_index:
         return 1
 
+    pdb.set_trace()
     assert False
 
 @memoized
@@ -213,15 +219,22 @@ def Z1IsPossible(z, m):
 @memoized
 def factorize(n):
     """Returns the factorization of n"""
+    if n == 1: return []
 
     assert n > 1
     factors = []
     for i in range(2, n + 1):
         while (n % i) == 0:
-            factors += [i]
-            n = n / i
+            return [i] + factorize(n/i)
+    if n != 1:
+        pdb.set_trace()
     assert n == 1
     return factors
+
+def moebius_factorization(f):
+    if len(set(f)) != len(f):
+        return 0
+    return int(math.pow(-1, len(f)))
 
 @memoized
 def moebius(n):
@@ -236,10 +249,7 @@ def moebius(n):
     if n == 1:
         return 1
 
-    f = factorize(n)
-    if len(set(f)) != len(f):
-        return 0
-    return int(math.pow(-1, len(f)))
+    return moebius_factorization(factorize(n))
 
 
 def one_unique_prime_factorization(n, factorizations, potential, p, smallest, all_factorizations):
@@ -293,7 +303,7 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest, al
     return [possibility], potential, True
 
 
-def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factorizations):
+def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factorizations, unique_primes_starting_cache):
     """Returns all prime factorizations with no duplicated primes with either even or odd number of factors.
 
     Find all possibilities of size start_length, then start_length+2,
@@ -307,10 +317,19 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
     smallest = None
     max_idx = 0
 
+    new_cache = {}
+
+#    if n == 37: pdb.set_trace()
+
     for p in primes:
 
         found = False
-        for f_idx in range(0, len(factorizations)):
+
+        f_idx_start = 0
+        if p in unique_primes_starting_cache:
+            f_idx_start = unique_primes_starting_cache[p]
+
+        for f_idx in range(f_idx_start, len(factorizations)):
 
             f = factorizations[f_idx]
 
@@ -333,16 +352,20 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
 
             if break_:
                 found = True
+                if p not in new_cache:
+                    new_cache[p] = f_idx
                 if not max_idx:
                     max_idx = max(max_idx, f_idx)
                     if [p] in factorizations:
                         max_idx = max(max_idx,factorizations.index([p]))
+
                 break
         if not found:
             max_idx = len(factorizations)
+            new_cache[p] = 0
 
 
-    return r, max_idx
+    return r, max_idx, new_cache
 
 
 def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizations):
@@ -362,8 +385,11 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizati
 
     # Just find what index f is in the factorizations list
 
-    if possibility in factorizations or tuple(possibility) in all_factorizations.finished:
+    if tuple(possibility) in all_factorizations.finished:
         # We've already found this.  Keep searching.
+        return None, smallest, False
+
+    if tuple(possibility) in factorizations:
         return None, smallest, False
 
     primes_finished = set()
@@ -394,11 +420,14 @@ def one_repeated_prime_factor(n, factorizations, p, f, smallest, all_factorizati
             if ord(possibility,i,factorizations) == -1:
                 return None, f, True
 
-    return possibility, f, True#not(tuple(possibility) in all_factorizations.outstanding)
+
+    return possibility, f, True
+    #if n == 25 and possibility == [2,2,2,3] and tuple(possibility) in all_factorizations.outstanding:
+     #   pdb.set_trace()
+    return possibility, f, not(tuple(possibility) in all_factorizations.outstanding)
 
 
-new_repeated_prime_factorizations_cache = {}
-def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations):
+def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache):
     """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
 
     For each prime, loop through the factorizations of each n, and see
@@ -408,18 +437,15 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
     """
     r = []
     smallest = None
-
     max_idx = None
 
-    cached_starts = {}
-    tpl = tupletized(factorizations)
     for p in primes:
 
-        start = 0
-        if p in cached_starts:
-            start = cached_starts[p]
+        f_idx_start = 0
+        if p in repeated_primes_starting_cache:
+            f_idx_start = repeated_primes_starting_cache[p]
 
-        for f_idx in range(start, len(factorizations)):
+        for f_idx in range(f_idx_start, len(factorizations)):
             f = factorizations[f_idx]
             break_ = False
 
@@ -427,6 +453,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                 if max_idx is None: max_idx = f_idx
                 break
 
+            #if n == 25 and f == [2,2,3]: pdb.set_trace()
             r_, smallest, break_ = one_repeated_prime_factor(
                 n, factorizations, p, f, smallest, all_factorizations)
 
@@ -588,12 +615,17 @@ def update_outstanding_and_finished(all_factorizations, new):
     return new_finished
 
 
-def generate_possibilities_for_factorization(n, m, factorizations, all_factorizations, start, end):
+def generate_possibilities_for_factorization(n, m, factorizations, all_factorizations, start, end, prime_starting_cache):
     """ Generate all possibilities for the given n and m. """
     primes = [x[0] for x in factorizations if len(x) == 1]
     if m == -1:
-        r, max_idx = new_unique_prime_factorizations(
-            n, True, primes, factorizations, all_factorizations)
+        r, max_idx, new_cache = new_unique_prime_factorizations(
+            n,
+            True,
+            primes,
+            factorizations,
+            all_factorizations,
+            prime_starting_cache[-1])
 
         if not max_idx:
             max_idx = len(factorizations)
@@ -609,13 +641,14 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
         if end[-1] != -1:
               end[-1] = max(end[-1], max_idx)
 
-        return r
+        return r, new_cache
     elif m == 0:
         r, max_idx = new_repeated_prime_factorizations(
             n,
             primes,
             factorizations,
-            all_factorizations)
+            all_factorizations,
+            prime_starting_cache[0])
 
         if max_idx != -1:
             start[0] = min(start[0], max_idx)
@@ -650,11 +683,16 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
             if end[0] != -1:
                 end[0] = max(end[0], max_idx)
 
-        return r
+        return r, {}
 
     elif m == 1:
-        r, max_idx = new_unique_prime_factorizations(
-            n, False, primes, factorizations, all_factorizations)
+        r, max_idx, new_cache = new_unique_prime_factorizations(
+            n,
+            False,
+            primes,
+            factorizations,
+            all_factorizations,
+            prime_starting_cache[1])
 
         if not max_idx:
             max_idx = -1
@@ -673,7 +711,7 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
               end[1] = -1
         if end[1] != -1:
               end[1] = max(end[1], max_idx+1)
-        return r
+        return r, new_cache
     else:
         assert False
 
@@ -754,6 +792,9 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             primes = []
 
             for x_idx in range(0, len(all_factorizations)):
+
+                #if n == 56 and y == (2,3,3,3) and p == 5 and x_idx==9 : pdb.set_trace()
+
                 for z in all_factorizations[x_idx]:
 
                     if len(z) == 1:
@@ -782,7 +823,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                             mask[y][x] = True
 
                     v = sorted([p] + z)
-                    if len(v) == len(set(v)) and (len(set(v)) % 2) == 1:
+                    if True or len(v) == len(set(v)) and (len(set(v)) % 2) == 1:
                         val = ord_absolute(v,y,all_factorizations)
 
                         if val == 99:
@@ -856,7 +897,6 @@ def is_consistent(n, factorization, all_factorizations, y, mask):
         for x in factorization:
             i = i + 1
 
-
             if not mask[i]:
                 for z in all_factorizations[i]:
                     if len(z) == 1:
@@ -924,6 +964,7 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
     eliminate = []
 
     for y in mask:
+        if len(y) == 1: continue
         logger.debug("  About to analyze masked Z for y="+str(y))
         e = copy.deepcopy(all_factorizations.all_factorizations)
         for idx in range(0, len(all_factorizations)):
@@ -942,6 +983,7 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 continue
 
             y = list(y)
+
             #pdb.set_trace()
 
             if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
@@ -949,6 +991,7 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 continue
 
             possible_z, idx = calculated_Z(y, primes, x)
+            #if n == 56 and y == [2,3,3,3] : pdb.set_trace()
             possible_z1 = calculated_Z1(y, primes, x)
 
             possible = True
@@ -1003,7 +1046,6 @@ def all_eliminations(n, all_factorizations, new_finished):
     global logger
 
     min_idx, max_idx, mask = ranges_for_z_calculations(n, all_factorizations, new_finished)
-
 
     logger.debug("  Generated upper and lower bounds for Z: "+str(min_idx)+ " " + str(max_idx))
     logger.debug("  mask: "+str(mask))
@@ -1070,6 +1112,7 @@ def generate_factorization_possibilities(max_n, start_n = 2):
     logger.info("Program begin")
 
     n = start_n
+    primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
     while n <= max_n:
         m = moebius(n)
         logger.info("Processing n=%d moebius=%d"%(n,m))
@@ -1088,20 +1131,43 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 
         end[m] = 0
 
-        if e == -1:
-            e = 0
+        if e == -1 or e == 0:
+            e = len(all_factorizations)
         # Reset end so it can be set properly each iteration
         logger.debug("  possibility generation: start: %d end: %d"%(s,e))
-        for factorizations in generate_all_possible_lists(all_factorizations.all_factorizations,s,e):
+
+        a = generate_all_possible_lists(all_factorizations.all_factorizations,s,e)
+        b = generate_all_possible_lists_for_mask(all_factorizations.all_factorizations,[True]*e+[False]*len(all_factorizations))
+
+        #factorizations in generate_all_possible_lists(all_factorizations.all_factorizations,s,e):
+        mask = [True]*e+[False]*len(all_factorizations)
+
+        for x in all_factorizations.outstanding:
+            if moebius_factorization(x)==moebius(n):
+                for y in all_factorizations.reverse_idx[tuple(x)]:
+                    mask[y] = True
+
+        for x in range(e, len(mask)):
+            if mask[x]:
+                logger.debug("  mask set: n="+str(x+2))
+
+        logger.debug("  primes_starting_cache used: " + str(primes_starting_cache))
+        logger.debug("  # of options: " + str(len(list(generate_all_possible_lists_for_mask(all_factorizations.all_factorizations,mask)))))
+
+        new_primes_starting_cache = {}
+        for factorizations in generate_all_possible_lists_for_mask(all_factorizations.all_factorizations,mask):
+            factorizations = factorizations[:e]
             # Generate possibilities for each subset of the possibility tree
             # that matters
-            new_ = generate_possibilities_for_factorization(
+
+            new_, new_cache = generate_possibilities_for_factorization(
                 n,
                 m,
                 factorizations,
                 all_factorizations,
                 start,
-                end)
+                end,
+                primes_starting_cache)
 
             new_ = prune_elements_lt(new_, factorizations, all_factorizations)
             # prune the ones that are more than all the other generated possibilities
@@ -1110,7 +1176,15 @@ def generate_factorization_possibilities(max_n, start_n = 2):
             # add all the new factorizations that remain that we have not
             # previously eliminated using z.
 
+            for p in new_cache:
+                if p not in new_primes_starting_cache:
+                    new_primes_starting_cache[p] = new_cache[p]
+                else:
+                    new_primes_starting_cache[p] = min(new_cache[p],
+                                                       new_primes_starting_cache[p])
 
+        primes_starting_cache[m] = new_primes_starting_cache
+        new = prune_elements_lt(new, factorizations, all_factorizations)
         logger.debug("  Initial possibilities: %s"%(str(new)))
 
         assert factorize(n) in new
@@ -1148,7 +1222,7 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 
                 n = min_+2
 
-
+                primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
                 all_factorizations = possibilities_for_n[n]
                 start = start_for_n[n]
                 end = end_for_n[n]
@@ -1160,9 +1234,56 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 
     return all_factorizations
 
+def probability(n,period):
+    count = collections.defaultdict(lambda: 0)
+    zeroes = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+    periodic_zeroes = collections.defaultdict(list)
+    periodic = {}
+
+    for x in [-1,0,1]:
+        for y in [-1,0,1]:
+            for z in [-1,0,1]:
+                for w in [-1,0,1]:
+                    periodic[tuple((w,x,y,z))] = []
+
+    for i in range(1, n):
+        v = tuple([moebius(x) for x in range(i,i+4)])
+        numZ = len([x for x in v if not x])
+        count[v] += 1
+        zeroes[numZ] += 1
+
+        if (i % period) == 0:
+            for v in periodic:
+                periodic[v] += [count[v]/i]
+            for v in zeroes:
+                periodic_zeroes[v] += [zeroes[v]/i]
+
+
+    for v in periodic:
+        print(v, end="\t")
+
+        for x in periodic[v]:
+            print("{:.4f}".format(x),"\t",end="")
+        print()
+    print("DONE")
+    print("\n")
+    print("\n")
+
+    print(zeroes)
+
+    for v in periodic_zeroes:
+        print(v,end="\t")
+        for x in periodic_zeroes[v]:
+            print("{:.4f}".format(x),"\t",end="")
+        print()
+
+
+
+
 if __name__ == "__main__":
     def main():
         setupLogger()
+        #probability(1000,100)
         f = generate_factorization_possibilities(int(sys.argv[1]))
         print(1, "[[1]]")
         for n in range(0, len(f)):
