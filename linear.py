@@ -272,34 +272,6 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest, al
         # Alread found this or it has a repeated prime
         return [], smallest, False
 
-
-    primes_finished = set()
-    for i in range(0, len(possibility)):
-        # Go through all factorizations before 'potential' and ensure that no
-        # factorization * p is lower than potential * p but doesn't exist.
-        prime = possibility[i]
-        if prime in primes_finished:
-            continue
-        primes_finished.add(prime)
-        other = possibility[:i] + possibility[i + 1:]
-
-        found, idx = index_recursive(all_factorizations, other)
-        if not found:
-            return [], smallest, True
-
-        for i in range(0, idx):
-           for y in all_factorizations[i]:
-               x = sorted([prime] + y)
-               _, idx__ = index_recursive(all_factorizations, y, last=True)
-               found, _ = index_recursive(all_factorizations, x, last=True)
-               if idx__ < idx and not found:
-                  return [], smallest,  True
-
-
-        for i in factorizations:
-            if ord(possibility,i,factorizations) == -1:
-                return [], smallest, True
-
     return [possibility], potential, True
 
 
@@ -1182,6 +1154,51 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 else:
                     new_primes_starting_cache[p] = min(new_cache[p],
                                                        new_primes_starting_cache[p])
+
+
+
+        new_new = []
+        #pdb.set_trace()
+        for possibility in new:
+            primes_finished = set()
+            found_all = True
+            for i in range(0, len(possibility)):
+                # Go through all factorizations before 'potential' and ensure that no
+                # factorization * p is lower than potential * p but doesn't exist.
+                prime = possibility[i]
+                if prime in primes_finished:
+                    continue
+                primes_finished.add(prime)
+                other = possibility[:i] + possibility[i + 1:]
+                if not other:
+                    break
+
+                found, idx = index_recursive(all_factorizations, other)
+                if not found:
+                    found_all = False
+                    break
+
+                for i in range(0, idx):
+                   for y in all_factorizations[i]:
+                       x = sorted([prime] + y)
+                       _, idx__ = index_recursive(all_factorizations, y, last=True)
+                       found, _ = index_recursive(all_factorizations, x, last=True)
+                       if idx__ < idx and not found:
+                          found_all = False
+                          break
+                   if not found_all:
+                        break
+                if not found_all:
+                    break
+
+
+                #for i in factorizations:
+                    #if ord(possibility,i,factorizations) == -1:
+                        #return [], smallest, True
+            if found_all:
+                new_new += [possibility]
+        new = new_new
+
 
         primes_starting_cache[m] = new_primes_starting_cache
         new = prune_elements_lt(new, factorizations, all_factorizations)
