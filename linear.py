@@ -1216,9 +1216,9 @@ def generate_factorization_possibilities(max_n, start_n = 2):
     # outstanding = set()
     # All the factorizations we have generated that are not finished.
 
-
-    start = {0: 0, -1: 0, 1: 0}
-    end = {0: 0, 1: 0, -1: 0}
+    state = State()
+    state.start = {0: 0, -1: 0, 1: 0}
+    state.end = {0: 0, 1: 0, -1: 0}
     # For each moebius value, which parts of the possibilities list we need to
     # iterate over to generate all possible values.  This is a performance
     # enhancement.  For example, at n=6, we start with the array: [ [2], [3],
@@ -1256,17 +1256,17 @@ def generate_factorization_possibilities(max_n, start_n = 2):
         #outstanding_for_n[n] = copy.deepcopy(outstanding)
         #if n == 61: pdb.set_trace()
         possibilities_for_n[n] = copy.deepcopy(all_factorizations)
-        start_for_n[n] = copy.copy(start)
-        end_for_n[n] = copy.copy(end)
+        start_for_n[n] = copy.copy(state.start)
+        end_for_n[n] = copy.copy(state.end)
 
         new = []
         # The array containing all the new values we generate.
 
-        s = start[m]
-        e = end[m]
+        s = state.start[m]
+        e = state.end[m]
         #e = -1
 
-        end[m] = 0
+        state.end[m] = 0 # FixMe: What is this for?
         if e == -1 or e == 0: #here
             e = len(all_factorizations)
 
@@ -1295,8 +1295,8 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 m,
                 factorizations,
                 all_factorizations,
-                start,
-                end,
+                state.start,
+                state.end,
                 primes_starting_cache,
                 e)
 
@@ -1412,8 +1412,8 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 
                 primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
                 all_factorizations = possibilities_for_n[n]
-                start = start_for_n[n]
-                end = end_for_n[n]
+                state.start = start_for_n[n]
+                state.end = end_for_n[n]
 
                 continue
 
