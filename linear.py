@@ -274,29 +274,12 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest, al
 
     return [possibility], potential, True
 
-def one_repeated_prime_factor(n, factorizations, p, f, f_idx, smallest, all_factorizations, previous_results):
-    """ Returns the possible factorization using the given prime and intermediate factorization.
-
-    """
-    # The possibility we are examining; add the prime to the intermediate
-    # factorization
-    possibility = sorted(f + [p])
-    #if o and n == 25 and possibility == [3,3,3]: pdb.set_trace()
-
-    if len(possibility) == len(set(possibility)):
-        # The possibility does not have a repeated prime; just return
-        # FixMe: If this is not in the results list, we should update
-        # smallest_factorization_idx and return, right?
+def one_prime_factor(n, factorizations, p, f, smallest, all_factorizations, condition):
+    possibility = sorted(f+[p])
+    if not condition(possibility):
         return None, smallest, False
-
-    # Just find what index f is in the factorizations list
-    if tuple(possibility) in all_factorizations.finished:
-        # We've already found this.  Keep searching.
+    if tuple(possibility) in all_factorizations.finished or possibility in factorizations:
         return None, smallest, False
-
-    if possibility in factorizations:
-        return None, smallest, False
-
     return possibility, f, True
 
 def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factorizations, unique_primes_starting_cache, max_f_idx):
@@ -314,8 +297,6 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
     max_idx = 0
 
     new_cache = {}
-#    if n == 22: pdb.set_trace()
-#    if n == 37: pdb.set_trace()
 
     for p in primes:
 
@@ -384,8 +365,6 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
             f = factorizations[f_idx]
             break_ = False
 
-            #if n == 25 and [3,3,3] not in all_factorizations[22] and f == [2,2,2] and p == 3:
-                #pdb.set_trace()
             if sorted([p] + f) in r:
                 break
 
@@ -395,9 +374,9 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                 if max_idx is None: max_idx = f_idx
                 break
 
-            r_, smallest, break_ = one_repeated_prime_factor(
-                n, factorizations, p, f, f_idx, smallest, all_factorizations,prev)
-
+            r_, smallest, break_ = one_prime_factor(
+                n, factorizations, p, f, smallest, all_factorizations,
+                lambda possibility: len(possibility) != len(set(possibility)))
 
             if r_ and r_ not in r:
                 prev += [r_]
@@ -411,7 +390,6 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                     for x in range(f_idx_start, max_f_idx):
                         if tuple(factorize(x+2)) != tuple(factorizations[x]):
                             real = False
-                    #if real: pdb.set_trace()
 
                 if max_idx is None:
                     max_idx = f_idx
@@ -422,8 +400,6 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
         if max_idx is None:
             max_idx = -1
 
-    #if len(r) > 1:
-        #pdb.set_trace()
     return r, max_idx
 
 def prune_elements_lt(factorizations, factorization, all_factorizations):
