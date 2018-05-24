@@ -251,7 +251,6 @@ def moebius(n):
 
     return moebius_factorization(factorize(n))
 
-
 def one_unique_prime_factorization(n, factorizations, potential, p, smallest, all_factorizations):
     """Returns the possible factorizations of n with no repeated factors.
 
@@ -262,17 +261,17 @@ def one_unique_prime_factorization(n, factorizations, potential, p, smallest, al
     # possible.
     if p == smallest:
         # FixMe: Move this out of this function into the containing one
-        return [], smallest, True
+        return None, smallest, True
     if p in potential:
-        return [], smallest, False
+        return None, smallest, False
 
     possibility = sorted(potential + [p])
 
     if tuple(possibility) in all_factorizations.finished or possibility in factorizations:
         # Alread found this or it has a repeated prime
-        return [], smallest, False
+        return None, smallest, False
 
-    return [possibility], potential, True
+    return possibility, potential, True
 
 def one_prime_factor(n, factorizations, p, f, smallest, all_factorizations, condition):
     possibility = sorted(f+[p])
@@ -323,9 +322,8 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
 
             n_, smallest, break_ = one_unique_prime_factorization(
                 n, factorizations, f, p, smallest, all_factorizations)
-            for x in n_:
-                if x not in r:
-                    r += [x]
+            if n_ and n_ not in r:
+                r += [n_]
 
             if break_:
                 found = True
