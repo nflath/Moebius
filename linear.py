@@ -260,6 +260,7 @@ def one_unique_prime_factorization(n, factorizations, p, f, smallest, all_factor
     # FixMe: This and one_repeated_prime_factorization are similar.  Merge if
     # possible.
     possibility = sorted(f + [p])
+    #if n == 22 and possibility == [2,11]: pdb.set_trace()
     if p == smallest:
         return None, smallest, True
     if not condition(possibility):
@@ -325,6 +326,7 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
                 r += [n_]
 
             if break_:
+                #if n == 22 and p == 2: pdb.set_trace()
                 found = True
                 if p not in new_cache:
                     new_cache[p] = f_idx
@@ -1058,10 +1060,10 @@ def generate_factorization_possibilities(max_n, start_n = 2):
         logger.debug("  possibility generation: start: %d end: %d"%(s,e))
 
         mask = [True]*e+[False]*len(all_factorizations)
-        for x in all_factorizations.outstanding:
-            if moebius_factorization(x)==moebius(n):
-                for y in all_factorizations.reverse_idx[tuple(x)]:
-                    mask[y] = True
+        # for x in all_factorizations.outstanding:
+        #     if moebius_factorization(x)==moebius(n):
+        #         for y in all_factorizations.reverse_idx[tuple(x)]:
+        #             mask[y] = True
 
         logger.debug("  primes_starting_cache used: " + str(primes_starting_cache))
         new_primes_starting_cache = {}
@@ -1074,7 +1076,7 @@ def generate_factorization_possibilities(max_n, start_n = 2):
             new_, new_cache = generate_possibilities_for_factorization(
                 n,
                 m,
-                factorizations,
+                factorizations[:e],
                 all_factorizations,
                 state.start,
                 state.end,
