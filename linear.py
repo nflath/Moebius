@@ -261,8 +261,8 @@ def one_unique_prime_factorization(n, factorizations, p, f, smallest, all_factor
     # possible.
     possibility = sorted(f + [p])
     #if n == 22 and possibility == [2,11]: pdb.set_trace()
-    if p == smallest:
-        return None, smallest, True
+    #if p == smallest:
+        #return None, smallest, True
     if not condition(possibility):
         return None, smallest, False
 
@@ -271,6 +271,10 @@ def one_unique_prime_factorization(n, factorizations, p, f, smallest, all_factor
         return None, smallest, False
 
     return possibility, f, True
+
+# 2,2,2 3,3
+
+# [2,2,2], [3,3] .  We generate [2,2,2
 
 def one_prime_factor(n, factorizations, p, f, smallest, all_factorizations, condition):
     possibility = sorted(f+[p])
@@ -308,12 +312,11 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
 
             f = factorizations[f_idx]
 
+            #if len(set(f)) != len(f):
+                #continue
 
-            if len(set(f)) != len(f):
-                continue
-
-            if p in f:
-                continue
+            #if p in f:
+                #continue
 
             if odd and ((len(f) % 2) == 1) or \
                 not odd and len(f) % 2 == 0:
@@ -321,7 +324,7 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
 
             n_, smallest, break_ = one_unique_prime_factorization(
                 n, factorizations, p, f, smallest, all_factorizations,
-                lambda possibility: len(possibility) == len(set(possibility)) and moebius(n) == -1 and len(f) % 2 == 0 or len(f) % 2 == 1)
+                lambda possibility: len(possibility) == len(set(possibility)) and (odd and len(f) % 2 == 0 or len(f) % 2 == 1))
             if n_ and n_ not in r:
                 r += [n_]
 
@@ -343,63 +346,112 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
     return r, max_idx, new_cache
 
 def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache, max_f_idx):
-    """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
+   prime_location_map = {}
+   prime_max_location_map = {}
+   primes = []
+   results = set()
+   for f_idx in range(0, len(factorizations)):
+       f = factorizations[f_idx]
+       if len(f) == 1:
+           prime_location_map[f[0]] = 0
+           primes += f
+       new_locs = {}
+       for p in primes:
+           p_start_idx  = prime_location_map[p]
+           #if n == 8: pdb.set_trace()
+           for p_idx in range(p_start_idx, f_idx+1):
+               # TODO: Make sure p * f is not > any of the max values we've seen
 
-    For each prime, loop through the factorizations of each n, and see
-    if we can get a possibility for that pair.  Once you find a
-    possibility for one factorization, you don't need to go further than
-    that factorization for the later primes.
-    """
-    r = []
-    smallest = None
-    max_idx = None
+               possibility = sorted(factorizations[p_idx]+[p])
 
-    for p in primes:
-        prev = []
-        f_idx_start = 0
-        if p in repeated_primes_starting_cache:
-            f_idx_start = repeated_primes_starting_cache[p]
+               stop = False
+               p_loc = primes.index(p)
+               for p_prime_idx in range(0, p_loc):
+                  # For all smaller primes, see that....... what, exactly?
+                  p_prime = primes[p_prime_idx]
+                  p_prime_possibility = sorted([p_prime] + factorizations[new_locs[p_prime]-1])
+                  if new_locs[p_prime] == 0:
+                      stop = True
+                      continue
+                  if ord_absolute(possibility, p_prime_possibility, all_factorizations) == 0 or ord_absolute(possibility, p_prime_possibility, all_factorizations) == 1:
+                      stop = True
+                      break
+               if stop:
+                   new_locs[p] = p_idx
+                   break
 
-        for f_idx in range(f_idx_start, max_f_idx):
-            f = factorizations[f_idx]
-            break_ = False
+               new_locs[p] = p_idx+1
+               if len(possibility) == len(set(possibility)):
+                  continue
+               if tuple(possibility) in all_factorizations.finished or tuple(possibility) in factorizations:
+                  continue
+               results.add(tuple(possibility))
 
-            if sorted([p] + f) in r:
-                break
+       prime_location_map = new_locs
 
-            if p not in f: continue
+       if results:
+           break
 
-            if smallest is not None and f == smallest:
-                if max_idx is None: max_idx = f_idx
-                break
+   return [list(x) for x in results], f_idx
 
-            r_, smallest, break_ = one_prime_factor(
-                n, factorizations, p, f, smallest, all_factorizations,
-                lambda possibility: len(possibility) != len(set(possibility)))
+# def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache, max_f_idx):
+#     """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
 
-            if r_ and r_ not in r:
-                prev += [r_]
-                r += [r_]
+#     For each prime, loop through the factorizations of each n, and see
+#     if we can get a possibility for that pair.  Once you find a
+#     possibility for one factorization, you don't need to go further than
+#     that factorization for the later primes.
+#     """
+#     r = []
+#     smallest = None
+#     max_idx = None
 
-            break_ |= break_
+#     for p in primes:
+#         prev = []
+#         f_idx_start = 0
+#         if p in repeated_primes_starting_cache:
+#             f_idx_start = repeated_primes_starting_cache[p]
 
-            if break_:
-                if n == 96 and p == 2:
-                    real = True
-                    for x in range(f_idx_start, max_f_idx):
-                        if tuple(factorize(x+2)) != tuple(factorizations[x]):
-                            real = False
+#         for f_idx in range(f_idx_start, max_f_idx):
+#             f = factorizations[f_idx]
+#             break_ = False
 
-                if max_idx is None:
-                    max_idx = f_idx
-                max_f_idx = f_idx
-                break
+#             if sorted([p] + f) in r:
+#                 break
+
+#             if p not in f: continue
+
+#             if smallest is not None and f == smallest:
+#                 if max_idx is None: max_idx = f_idx
+#                 break
+
+#             r_, smallest, break_ = one_prime_factor(
+#                 n, factorizations, p, f, smallest, all_factorizations,
+#                 lambda possibility: len(possibility) != len(set(possibility)))
+
+#             if r_ and r_ not in r:
+#                 prev += [r_]
+#                 r += [r_]
+
+#             break_ |= break_
+
+#             if break_:
+#                 if n == 96 and p == 2:
+#                     real = True
+#                     for x in range(f_idx_start, max_f_idx):
+#                         if tuple(factorize(x+2)) != tuple(factorizations[x]):
+#                             real = False
+
+#                 if max_idx is None:
+#                     max_idx = f_idx
+#                 max_f_idx = f_idx
+#                 break
 
 
-        if max_idx is None:
-            max_idx = -1
+#         if max_idx is None:
+#             max_idx = -1
 
-    return r, max_idx
+#     return r, max_idx
 
 def prune_elements_lt(factorizations, factorization, all_factorizations):
     """Remove all elements in factorizations that are less than another element in factorizations
@@ -1155,7 +1207,7 @@ def generate_factorization_possibilities(max_n, start_n = 2):
             print(1, "[[1]]")
             for i in range(0, len(all_factorizations)):
                 print(i + 2, all_factorizations[i])
-            print(all_factorizations.all_factorizations)
+            print(new)
             pdb.set_trace()
             assert False
 
