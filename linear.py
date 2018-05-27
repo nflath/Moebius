@@ -345,6 +345,18 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
 
     return r, max_idx, new_cache
 
+def is_possible_all_in_factorization(n, possibilities, all_factorizations):
+#    if possibilities and n == 27: pdb.set_trace()
+    locs = set()
+    items = set()
+    for possibility in possibilities:
+        for idx in all_factorizations.reverse_idx[possibility]:
+            locs.add(idx)
+            for i in all_factorizations[idx]:
+                items.add(tuple(i))
+    return len(locs) >= len(items)
+
+# 27 is missing [2,2,7] - why?
 def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache, max_f_idx):
    prime_location_map = {}
    prime_max_location_map = {}
@@ -389,7 +401,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
 
        prime_location_map = new_locs
 
-       if results:
+       if results and is_possible_all_in_factorization(n, results, all_factorizations):
            break
 
    return [list(x) for x in results], f_idx
