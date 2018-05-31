@@ -346,6 +346,7 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
     return r, max_idx, new_cache
 
 def is_possible_all_in_factorization(n, possibilities, all_factorizations):
+    # Misnamed
 #    if possibilities and n == 27: pdb.set_trace()
     locs = set()
     items = set()
@@ -354,10 +355,12 @@ def is_possible_all_in_factorization(n, possibilities, all_factorizations):
             locs.add(idx)
             for i in all_factorizations[idx]:
                 items.add(tuple(i))
-    return len(locs) >= len(items)
+    return (len(locs)+1) >= len(items)
 
-# 27 is missing [2,2,7] - why?
+o = False
 def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache, max_f_idx):
+   global o
+   if n == 32: o = True
    prime_location_map = {}
    prime_max_location_map = {}
    primes = []
@@ -369,8 +372,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
            primes += f
        new_locs = {}
        for p in primes:
-           p_start_idx  = prime_location_map[p]
-           #if n == 8: pdb.set_trace()
+           p_start_idx = prime_location_map[p]
            for p_idx in range(p_start_idx, f_idx+1):
                # TODO: Make sure p * f is not > any of the max values we've seen
 
@@ -384,8 +386,10 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                   p_prime_possibility = sorted([p_prime] + factorizations[new_locs[p_prime]-1])
                   if new_locs[p_prime] == 0:
                       stop = True
-                      continue
+                      break
+
                   if ord_absolute(possibility, p_prime_possibility, all_factorizations) == 0 or ord_absolute(possibility, p_prime_possibility, all_factorizations) == 1:
+                      #if n == 27 and o and results: pdb.set_trace()
                       stop = True
                       break
                if stop:
@@ -397,13 +401,23 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                   continue
                if tuple(possibility) in all_factorizations.finished or tuple(possibility) in factorizations:
                   continue
+               #if n == 54: pdb.set_trace()
+               #if n == 52: pdb.set_trace()
                results.add(tuple(possibility))
 
        prime_location_map = new_locs
 
+       #if n == 54 and (2,2,2,7) in results and (2,3,3,3) in results: pdb.set_trace()
+       #if n == 52 and results:
+           #pdb.set_trace()
+       #if n == 27 and o and results: pdb.set_trace()
+       #if n == 9 and results: pdb.set_trace()
        if results and is_possible_all_in_factorization(n, results, all_factorizations):
-           break
+           #if n == 52: pdb.set_trace()
+           #if n == 44: pdb.set_trace()
 
+           break
+   #if n == 52: pdb.set_trace()
    return [list(x) for x in results], f_idx
 
 # def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache, max_f_idx):
