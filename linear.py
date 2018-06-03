@@ -388,10 +388,11 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                       stop = True
                       break
 
-                  if ord_absolute(possibility, p_prime_possibility, all_factorizations) == 0 or ord_absolute(possibility, p_prime_possibility, all_factorizations) == 1:
-                      #if n == 27 and o and results: pdb.set_trace()
+
+                  if ord_absolute(possibility, p_prime_possibility, all_factorizations) == 1:
                       stop = True
                       break
+                  #if n == 48 and p == 3 and possibility == [3,3,5]: pdb.set_trace()
                if stop:
                    new_locs[p] = p_idx
                    break
@@ -403,81 +404,19 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                   continue
                #if n == 54: pdb.set_trace()
                #if n == 52: pdb.set_trace()
+               #if n == 48 and possibility == [3,3,5]: pdb.set_trace()
                results.add(tuple(possibility))
 
        prime_location_map = new_locs
 
-       #if n == 54 and (2,2,2,7) in results and (2,3,3,3) in results: pdb.set_trace()
-       #if n == 52 and results:
-           #pdb.set_trace()
-       #if n == 27 and o and results: pdb.set_trace()
-       #if n == 9 and results: pdb.set_trace()
-       if results and is_possible_all_in_factorization(n, results, all_factorizations):
-           #if n == 52: pdb.set_trace()
-           #if n == 44: pdb.set_trace()
+       real_done_results = [x for x in results if ord_absolute(x, sorted([2] + factorizations[new_locs[2]-1]),all_factorizations) == -1]
+       if real_done_results and is_possible_all_in_factorization(n, real_done_results, all_factorizations):
+           #if n == 48: pdb.set_trace()
+
 
            break
    #if n == 52: pdb.set_trace()
    return [list(x) for x in results], f_idx
-
-# def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizations, repeated_primes_starting_cache, max_f_idx):
-#     """Return the possibilities for factorizaiton of n whose factorizations contain a repeated prime number.
-
-#     For each prime, loop through the factorizations of each n, and see
-#     if we can get a possibility for that pair.  Once you find a
-#     possibility for one factorization, you don't need to go further than
-#     that factorization for the later primes.
-#     """
-#     r = []
-#     smallest = None
-#     max_idx = None
-
-#     for p in primes:
-#         prev = []
-#         f_idx_start = 0
-#         if p in repeated_primes_starting_cache:
-#             f_idx_start = repeated_primes_starting_cache[p]
-
-#         for f_idx in range(f_idx_start, max_f_idx):
-#             f = factorizations[f_idx]
-#             break_ = False
-
-#             if sorted([p] + f) in r:
-#                 break
-
-#             if p not in f: continue
-
-#             if smallest is not None and f == smallest:
-#                 if max_idx is None: max_idx = f_idx
-#                 break
-
-#             r_, smallest, break_ = one_prime_factor(
-#                 n, factorizations, p, f, smallest, all_factorizations,
-#                 lambda possibility: len(possibility) != len(set(possibility)))
-
-#             if r_ and r_ not in r:
-#                 prev += [r_]
-#                 r += [r_]
-
-#             break_ |= break_
-
-#             if break_:
-#                 if n == 96 and p == 2:
-#                     real = True
-#                     for x in range(f_idx_start, max_f_idx):
-#                         if tuple(factorize(x+2)) != tuple(factorizations[x]):
-#                             real = False
-
-#                 if max_idx is None:
-#                     max_idx = f_idx
-#                 max_f_idx = f_idx
-#                 break
-
-
-#         if max_idx is None:
-#             max_idx = -1
-
-#     return r, max_idx
 
 def prune_elements_lt(factorizations, factorization, all_factorizations):
     """Remove all elements in factorizations that are less than another element in factorizations
@@ -1063,63 +1002,25 @@ def generate_factorization_possibilities(max_n, start_n = 2):
     """ Generates the list of possible factorizations from start_n to max_n. """
     global logger, calls, ord_cache
 
-    all_factorizations = FactorizationPossibilities()
-
-    # finished = set()
-    # Set of factorizations that are 'finished', IE they will not be generated
-    # as possibilities in any future iterations.  This can occur for two reasons:
-    #
-    #   1) Any arrangement of possible factorizations will have this factor.
-    #      For example, both n=8 and n=9 generate (2,2,2) and (3,3) as their
-    #      possibilities - so at this point, they will always be generated in
-    #      some arrangement.
-    #
-    #   2) A larger number has been finished.  For example, (2,3,5) is finished
-    #      once we isolate 36=(2,2,3,3).
-
-    # outstanding = set()
-    # All the factorizations we have generated that are not finished.
-
     state = State()
+
+    state.all_factorizations = FactorizationPossibilities()
     state.start = {0: 0, -1: 0, 1: 0}
     state.end = {0: 0, 1: 0, -1: 0}
-    # For each moebius value, which parts of the possibilities list we need to
-    # iterate over to generate all possible values.  This is a performance
-    # enhancement.  For example, at n=6, we start with the array: [ [2], [3],
-    # [2, 2], [5], [2,3]].  We know that next time we generate possibilities
-    # for a moebius value of 1, we don't have to go past [2,5] - start will be
-    # 0 and end will be 3.  Then, when we get to n=10 (the next n with a
-    # moebius value of 0), we don't need to generate possibilities twice, even
-    # though there are two possible factorization arrays.
 
-    # FixMe: Start is not updated, so it's always 0.
-
-
-    # finished_for_n = {}
-    # outstanding_for_n = {}
-    # possibilities_for_n = {}
-    # start_for_n = {}
-    # end_for_n = {}
-    # Historical data - contans the values of finished/outstanding/start/end at the
-    # beginning of processing each n.  Used to go backwards after eliminating
-    # possiblities
-    # FixMe - probably should create a class for all of these.
-
-    eliminate = collections.defaultdict(list)
-    # All the possibilities we have eliminated based on analyzing Z.
+    state.eliminate = collections.defaultdict(list)
 
     logger.info("Program begin")
 
-    n = start_n
-    primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
-    while n <= max_n:
+    state.n = start_n
+    state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
+    while state.n <= max_n:
+        n = state.n
         m = moebius(n)
+
         logger.info("Processing n=%d moebius=%d"%(n,m))
 
-        #finished_for_n[n] = copy.deepcopy(finished)
-        #outstanding_for_n[n] = copy.deepcopy(outstanding)
-        #if n == 61: pdb.set_trace()
-        state.possibilities_for_n[n] = copy.deepcopy(all_factorizations)
+        state.possibilities_for_n[n] = copy.deepcopy(state.all_factorizations)
         state.start_for_n[n] = copy.copy(state.start)
         state.end_for_n[n] = copy.copy(state.end)
 
@@ -1131,22 +1032,23 @@ def generate_factorization_possibilities(max_n, start_n = 2):
         #e = -1
 
         state.end[m] = 0 # FixMe: What is this for?
-        if e == -1 or e == 0: #here
-            e = len(all_factorizations)
-
         # Reset end so it can be set properly each iteration
+        if e == -1 or e == 0: #here
+            e = len(state.all_factorizations)
+
+
         logger.debug("  possibility generation: start: %d end: %d"%(s,e))
 
-        mask = [True]*e+[False]*len(all_factorizations)
-        # for x in all_factorizations.outstanding:
+        mask = [True]*e+[False]*len(state.all_factorizations)
+        # for x in state.all_factorizations.outstanding:
         #     if moebius_factorization(x)==moebius(n):
-        #         for y in all_factorizations.reverse_idx[tuple(x)]:
+        #         for y in state.all_factorizations.reverse_idx[tuple(x)]:
         #             mask[y] = True
 
-        logger.debug("  primes_starting_cache used: " + str(primes_starting_cache))
+        logger.debug("  primes_starting_cache used: " + str(state.primes_starting_cache))
         new_primes_starting_cache = {}
         count = 0
-        for factorizations in generate_all_possible_lists_for_mask(all_factorizations.all_factorizations,mask):
+        for factorizations in generate_all_possible_lists_for_mask(state.all_factorizations.all_factorizations,mask):
             factorizations = factorizations#[:e]
             # Generate possibilities for each subset of the possibility tree
             # that matters
@@ -1155,18 +1057,18 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 n,
                 m,
                 factorizations[:e],
-                all_factorizations,
+                state.all_factorizations,
                 state.start,
                 state.end,
-                primes_starting_cache,
+                state.primes_starting_cache,
                 e)
 
-            new_ = prune_elements_lt(new_, factorizations, all_factorizations)
+            new_ = prune_elements_lt(new_, factorizations, state.all_factorizations)
             # prune the ones that are more than all the other generated possibilities
 
 #            print(factorizations, new_)
 
-            new += [x for x in new_ if x not in new and x not in eliminate[n-2]]
+            new += [x for x in new_ if x not in new and x not in state.eliminate[n-2]]
             # add all the new factorizations that remain that we have not
             # previously eliminated using z.
 
@@ -1198,16 +1100,16 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 if not other:
                     break
 
-                found, idx = index_recursive(all_factorizations, other)
+                found, idx = index_recursive(state.all_factorizations, other)
                 if not found:
                     found_all = False
                     break
 
                 for i in range(0, idx):
-                   for y in all_factorizations[i]:
+                   for y in state.all_factorizations[i]:
                        x = sorted([prime] + y)
-                       _, idx__ = index_recursive(all_factorizations, y, last=True)
-                       found, _ = index_recursive(all_factorizations, x, last=True)
+                       _, idx__ = index_recursive(state.all_factorizations, y, last=True)
+                       found, _ = index_recursive(state.all_factorizations, x, last=True)
                        if idx__ < idx and not found:
                           found_all = False
                           break
@@ -1224,35 +1126,33 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 new_new += [possibility]
         new = new_new
 
-
-        primes_starting_cache[m] = new_primes_starting_cache
-        new = prune_elements_lt(new, factorizations, all_factorizations)
+        state.primes_starting_cache[m] = new_primes_starting_cache
+        new = prune_elements_lt(new, factorizations, state.all_factorizations)
         logger.debug("  Initial possibilities: %s"%(str(new)))
 #        if n == 52: pdb.set_trace()
         if not factorize(n) in new:
             print(1, "[[1]]")
-            for i in range(0, len(all_factorizations)):
-                print(i + 2, all_factorizations[i])
+            for i in range(0, len(state.all_factorizations)):
+                print(i + 2, state.all_factorizations[i])
             print(new)
             pdb.set_trace()
             assert False
 
         assert factorize(n) in new
 
-        all_factorizations.all_factorizations += [sorted(new)]
-        all_factorizations.update_reverse_idx()
+        state.all_factorizations.all_factorizations += [sorted(new)]
+        state.all_factorizations.update_reverse_idx()
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
-        new_finished = update_outstanding_and_finished(all_factorizations, new)
+        new_finished = update_outstanding_and_finished(state.all_factorizations, new)
 
-        logger.debug("  outstanding processing finished: outstanding=%s new_finished=%s",all_factorizations.outstanding,new_finished)
+        logger.debug("  outstanding processing finished: outstanding=%s new_finished=%s",state.all_factorizations.outstanding,new_finished)
 
         all_potential_useful_z = new_finished
 
-
         if all_potential_useful_z:
-            new_eliminate, new_z_calculated = all_eliminations(n, all_factorizations, new_finished)
+            new_eliminate, new_z_calculated = all_eliminations(n, state.all_factorizations, new_finished)
 
             if new_eliminate:
                 # For all of our new elimination candidates, update
@@ -1261,27 +1161,26 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 
                 min_ = None
                 for x in new_eliminate:
-                    if x[1] in all_factorizations[x[0]]:
-                        all_factorizations[x[0]].remove(x[1])
+                    if x[1] in state.all_factorizations[x[0]]:
+                        state.all_factorizations[x[0]].remove(x[1])
                         if not min_:
                             min_ = x[0]
                         min_ = min(min_,x[0])
-                        if [x[1]] not in eliminate[x[0]]:
-                            eliminate[x[0]] += [x[1]]
-                n = min_+2
+                        if [x[1]] not in state.eliminate[x[0]]:
+                            state.eliminate[x[0]] += [x[1]]
+                state.n = min_+2
 
-
-                primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
-                all_factorizations = state.possibilities_for_n[n]
+                state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
+                state.all_factorizations = state.possibilities_for_n[state.n]
                 state.start = state.start_for_n[n]
                 state.end = state.end_for_n[n]
 
                 continue
 
         # End of the loop; update n
-        n = n + 1
+        state.n += 1
 
-    return all_factorizations
+    return state.all_factorizations
 
 if __name__ == "__main__":
     def main():
