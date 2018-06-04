@@ -182,7 +182,7 @@ def factorize(n):
     factors = []
     for i in range(2, n + 1):
         while (n % i) == 0:
-            return [i] + factorize(n/i)
+            return [i] + factorize(int(n/i))
     if n != 1:
         pdb.set_trace()
     assert n == 1
@@ -908,25 +908,19 @@ def all_eliminations(n, all_factorizations, new_finished):
     return e_, []
 
 
-def generate_factorization_possibilities(max_n, start_n = 2):
+def generate_factorization_possibilities(max_n, state):
     """ Generates the list of possible factorizations from start_n to max_n. """
     global logger, calls, ord_cache
 
-    state = State()
-
-    state.all_factorizations = FactorizationPossibilities()
-    state.start = {0: 0, -1: 0, 1: 0}
-    state.end = {0: 0, 1: 0, -1: 0}
-
-    state.eliminate = collections.defaultdict(list)
-
     logger.info("Program begin")
 
-    state.n = start_n
-    state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
     while state.n <= max_n:
         n = state.n
         m = moebius(n)
+
+        if n == 31:
+            import pickle
+            pickle.dump(state, open("saved","wb"))
 
         logger.info("Processing n=%d moebius=%d"%(n,m))
 
@@ -1084,7 +1078,12 @@ def generate_factorization_possibilities(max_n, start_n = 2):
 if __name__ == "__main__":
     def main():
         setupLogger()
-        f = generate_factorization_possibilities(int(sys.argv[1]))
+        state = State()
+        if len(sys.argv) > 2:
+            import pickle
+            state = pickle.load(open(sys.argv[2],"rb"))
+            state.n = int(state.n)
+        f = generate_factorization_possibilities(int(sys.argv[1]), state)
         print(1, "[[1]]")
         for n in range(0, len(f)):
             print(n + 2, f[n])
