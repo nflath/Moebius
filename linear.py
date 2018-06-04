@@ -14,43 +14,6 @@ from util import *
 # Global logger
 logger = None
 
-class FactorizationPossibilities(object):
-    # Represents the 'tree' of factorization possibilities.  Not represented as
-    # a tree for performance reasons; instead, a list-of-lists, where
-    # all_factorizations[i] is a list of all possible factorizations of i.
-    #
-    # Fields: all_factorizations - the master list of lists
-    # reverse_idx: Maps from a factorization to each index it is located in.
-    # Finished - All factorizations that will not appear as a possibility in a future
-    #   index
-    # Outstanding - All factorizations that are in the list that may appear
-    # in a future index
-
-    # FixMe: Move more functionality into this class:
-    #   - (index_recursive)
-    #   - Updating finished/outstanding/reverse_idx
-
-    def __init__(self):
-        self.all_factorizations = []
-        self.reverse_idx = collections.defaultdict(list)
-        self.finished = set()
-        self.outstanding = set()
-
-    def update_reverse_idx(self):
-        # Should be called after updating self.all_factorizations FixMe: Should
-        # not be exposed externally, there should be some function that
-        # updates all_factorizations, finsihed, outstanding, reverse_idx atomically
-
-        n = len(self.all_factorizations) - 1
-        for z in self.all_factorizations[n]:
-            self.reverse_idx[tuple(z)].append(n)
-
-    def __getitem__(self, key):
-        return self.all_factorizations[key]
-
-    def __len__(self):
-        return len(self.all_factorizations)
-
 def setupLogger():
     """Set up the global logger to be used by this module."""
     global logger
@@ -123,22 +86,16 @@ def calculated_Z1(f, primes, factorizations):
                 break
     return len(in_)
 
-def ord(this, other, factorizations):
-    t, o = simplify(this, other)
-    # if ord_(this, other, factorizations) != ord_(t, o, factorizations):
-    #     pdb.set_trace()
-    return ord_(t, o, factorizations)
-
-
-def ord_(t, o, factorizations):
+def ord(t, o, factorizations):
     """Returns whether this < other for a specific factorization possibility.
 
     Check each permutation and 2-way split of this and other to try and
     find one where both parts of this are less than the parts of
     other.
 
-    Returns -1 if t < o, 0 if t == 0, 1 if t > o
+    Returns -1 if t < o, 0 if t == o, 1 if t > o
     """
+    t, o = simplify(t, o)
 
     if not t and not o or t == o:
         return 0
@@ -257,12 +214,9 @@ def one_unique_prime_factorization(n, factorizations, p, f, smallest, all_factor
     'p' is the prime to use and 'potential' is the factorization we are
     extending, so
     """
-    # FixMe: This and one_repeated_prime_factorization are similar.  Merge if
+    # FixMe: This and one_prime_factorization are similar.  Merge if
     # possible.
     possibility = sorted(f + [p])
-    #if n == 22 and possibility == [2,11]: pdb.set_trace()
-    #if p == smallest:
-        #return None, smallest, True
     if not condition(possibility):
         return None, smallest, False
 
@@ -272,9 +226,6 @@ def one_unique_prime_factorization(n, factorizations, p, f, smallest, all_factor
 
     return possibility, f, True
 
-# 2,2,2 3,3
-
-# [2,2,2], [3,3] .  We generate [2,2,2
 
 def one_prime_factor(n, factorizations, p, f, smallest, all_factorizations, condition):
     possibility = sorted(f+[p])
@@ -329,7 +280,6 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
                 r += [n_]
 
             if break_:
-                #if n == 22 and p == 2: pdb.set_trace()
                 found = True
                 if p not in new_cache:
                     new_cache[p] = f_idx
@@ -347,7 +297,6 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
 
 def is_possible_all_in_factorization(n, possibilities, all_factorizations):
     # Misnamed
-#    if possibilities and n == 27: pdb.set_trace()
     locs = set()
     items = set()
     for possibility in possibilities:
@@ -374,25 +323,19 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
        for p in primes:
            p_start_idx = prime_location_map[p]
            for p_idx in range(p_start_idx, f_idx+1):
-               # TODO: Make sure p * f is not > any of the max values we've seen
-
                possibility = sorted(factorizations[p_idx]+[p])
 
                stop = False
                p_loc = primes.index(p)
                for p_prime_idx in range(0, p_loc):
-                  # For all smaller primes, see that....... what, exactly?
                   p_prime = primes[p_prime_idx]
                   p_prime_possibility = sorted([p_prime] + factorizations[new_locs[p_prime]-1])
                   if new_locs[p_prime] == 0:
                       stop = True
                       break
-
-
                   if ord_absolute(possibility, p_prime_possibility, all_factorizations) == 1:
                       stop = True
                       break
-                  #if n == 48 and p == 3 and possibility == [3,3,5]: pdb.set_trace()
                if stop:
                    new_locs[p] = p_idx
                    break
@@ -402,20 +345,13 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                   continue
                if tuple(possibility) in all_factorizations.finished or tuple(possibility) in factorizations:
                   continue
-               #if n == 54: pdb.set_trace()
-               #if n == 52: pdb.set_trace()
-               #if n == 48 and possibility == [3,3,5]: pdb.set_trace()
                results.add(tuple(possibility))
 
        prime_location_map = new_locs
 
        real_done_results = [x for x in results if ord_absolute(x, sorted([2] + factorizations[new_locs[2]-1]),all_factorizations) == -1]
        if real_done_results and is_possible_all_in_factorization(n, real_done_results, all_factorizations):
-           #if n == 48: pdb.set_trace()
-
-
            break
-   #if n == 52: pdb.set_trace()
    return [list(x) for x in results], f_idx
 
 def prune_elements_lt(factorizations, factorization, all_factorizations):
@@ -605,8 +541,6 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
             start[0] = min(start[0], max_idx)
 
 
-        #if max_idx >= len(all_factorizations):
-                #max_idx
         if(max_idx) != -1:
 
             for x in all_factorizations[max_idx]:
@@ -617,7 +551,7 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
             found = False
             while not found and max_idx < len(all_factorizations):
                 for y in all_factorizations[max_idx]:
-                    if 2 in y and tuple(y) in all_factorizations.finished:# and [2] + y not in r:
+                    if 2 in y and tuple(y) in all_factorizations.finished:
                         found, max_idx = index_recursive(all_factorizations, y, last=True)
                         break
                 max_idx = max_idx + 1
@@ -726,10 +660,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
 
         mask[y] = [False] * len(all_factorizations)
 
-
-        #if y == (2, 5, 5): pdb.set_trace()
-
-
         for p in possible_primes:
             # For each prime, try to find some index x_idx s.t
             # [p,p]*all_factorizations[x_idx] > y.  Keep track of the maximum
@@ -738,8 +668,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             primes = []
 
             for x_idx in range(0, len(all_factorizations)):
-
-                #if n == 56 and y == (2,3,3,3) and p == 5 and x_idx==9 : pdb.set_trace()
 
                 for z in all_factorizations[x_idx]:
 
@@ -794,7 +722,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                     if z == list(y):
                         mask[y][x_idx] = True
 
-#                    if n == 46 and x_idx==19 and y == (2,2,11): pdb.set_trace()
                     found = False
                     for d_ in d:
                         if list(z) == sorted(list(d_)+[p]):
@@ -807,8 +734,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                        for z_ in all_factorizations[x_idx]:
                            d.add(tuple(z_))
 
-                    #if len(z) == 1 and len(all_factorizations[x_idx]) > 1:
-                    #mask[y][x_idx] = True
         for x in range(0,2):
             present = set()
             for x_idx in range(0, len(all_factorizations)):
@@ -856,15 +781,9 @@ def is_consistent(n, factorization, all_factorizations, y, mask):
 
             for p_ in x:
                 if tuple([p_]) not in primes:
-                    # pdb.set_trace()
-                    if n == 57: pdb.set_trace()
                     return False
-                    pass
 
             if x == rest:
-                if n == 60 and factorization == [[2], [3], [2, 2], [5], [2, 3], [7], [2, 2, 2], [3, 3], [2, 5], [11], [2, 2, 3], [13], [2, 7], [3, 5], [2, 2, 2, 2], [17], [2, 3, 3], [19], [2, 2, 5], [3, 7], [2, 11], [23], [2, 2, 2, 3], [5, 5], [2, 13], [2, 2, 7], [3, 3, 3], [2, 3, 5], [30], [31], [2, 2, 2, 2, 2], [2, 17], [3, 11], [5, 7], [2, 2, 3, 3], [37], [2, 19], [3, 13], [2, 2, 2, 5], [2, 3, 7], [42], [43], [2, 2, 11], [3, 3, 5], [2, 23], [47], [2, 2, 2, 2, 3], [2, 5, 5], [2, 2, 13], [3, 17], [7, 7], [53], [2, 2, 2, 7], [2, 29], [2, 3, 3, 3], [2, 30], [3, 19], [59], [2, 2, 3, 5]] and list(y) == [2,2,3,5]:
-                    #pdb.set_trace()
-                    pass
                 lt = False
                 continue
 
@@ -874,12 +793,10 @@ def is_consistent(n, factorization, all_factorizations, y, mask):
                     if tuple(v) in all_factorizations.finished and \
                       all_factorizations.reverse_idx[tuple(v)][-1] < factorization.index(y):
                         continue
-                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
                     return False
                 vi = factorization.index(v)
 
                 if vi >= yi:
-                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
                     return False
 
             else:
@@ -890,14 +807,11 @@ def is_consistent(n, factorization, all_factorizations, y, mask):
                         all_factorizations.reverse_idx[tuple(v)][0] > factorization.index(y)) or
                         len(all_factorizations.reverse_idx[tuple(v)])==0):
                         continue
-                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
-                    # if n == 46 and factorization[27] == [29] and [2,3,7] in factorization: pdb.set_trace()
                     return False
 
                 vi = factorization.index(v)
 
                 if vi <= yi:
-                    #if n == 60 and factorization[28] == [2,3,5]: pdb.set_trace()
                     return False
 
     return True
@@ -926,14 +840,11 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
 
             y = list(y)
 
-            #pdb.set_trace()
 
             if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
-                #if n == 60 and x[27]==[29] and x[29]==[31]: pdb.set_trace()
                 continue
 
             possible_z, idx = calculated_Z(y, primes, x)
-            #if n == 56 and y == [2,3,3,3] : pdb.set_trace()
             possible_z1 = calculated_Z1(y, primes, x)
 
             possible = True
@@ -959,7 +870,6 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 # exit.
                 possible = False
             elif not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
-                #if n == 60 and x[27]==[29] and x[29]==[31]: pdb.set_trace()
                 possible = False
 
             if possible:
@@ -1066,8 +976,6 @@ def generate_factorization_possibilities(max_n, start_n = 2):
             new_ = prune_elements_lt(new_, factorizations, state.all_factorizations)
             # prune the ones that are more than all the other generated possibilities
 
-#            print(factorizations, new_)
-
             new += [x for x in new_ if x not in new and x not in state.eliminate[n-2]]
             # add all the new factorizations that remain that we have not
             # previously eliminated using z.
@@ -1078,10 +986,6 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 else:
                     new_primes_starting_cache[p] = min(new_cache[p],
                                                        new_primes_starting_cache[p])
-
-
-#        if n == 25 and o:
-#            pdb.set_trace()
 
         logger.debug("  # of options:"+str(count))
         new_new = []
@@ -1118,10 +1022,6 @@ def generate_factorization_possibilities(max_n, start_n = 2):
                 if not found_all:
                     break
 
-
-                #for i in factorizations:
-                    #if ord(possibility,i,factorizations) == -1:
-                        #return [], smallest, True
             if found_all:
                 new_new += [possibility]
         new = new_new
@@ -1129,7 +1029,6 @@ def generate_factorization_possibilities(max_n, start_n = 2):
         state.primes_starting_cache[m] = new_primes_starting_cache
         new = prune_elements_lt(new, factorizations, state.all_factorizations)
         logger.debug("  Initial possibilities: %s"%(str(new)))
-#        if n == 52: pdb.set_trace()
         if not factorize(n) in new:
             print(1, "[[1]]")
             for i in range(0, len(state.all_factorizations)):
@@ -1191,6 +1090,3 @@ if __name__ == "__main__":
             print(n + 2, f[n])
 
     main()
-
-# 96 = 2*2*2*2*2*3
-# 2*2*23 gets there first before (2*
