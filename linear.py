@@ -357,6 +357,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                results.add(tuple(possibility))
 
        prime_location_map = new_locs
+       #if len(results) > 1: pdb.set_trace()
        if results and should_stop_search(n, results, all_factorizations):
            break
 
@@ -946,15 +947,20 @@ def shared(f, all_factorizations):
     return positions, items
 
 def filter(new, all_factorizations):
+    # Filter out too-high values(more than enough space for all lower values)
     new_new = []
     for f in new:
         lt = []
         gt = []
         equiv = []
         p, i = shared(f, all_factorizations)
+        if len(p) == 0:
+            for x in new:
+                p_, i_ = shared(x, all_factorizations)
+                p = p.union(p_)
+                i = i.union(i_)
+
         for n in i:
-            if f == tuple(n):
-                continue
             r = ord_absolute(n, f, all_factorizations)
             if r == -1:
                 lt += [n]
@@ -962,12 +968,7 @@ def filter(new, all_factorizations):
                 gt += [n]
             else:
                 equiv += [n]
-
-        if f == [2,2,7]: pdb.set_trace()
-
-        all_lower_and_equiv_are_in = len(p) > (len(lt) + len(equiv) + 1)
-
-        if len(p) > (len(i) - len(gt) - len(equiv) - 1):
+        if len(p)+1 > (len(lt)):
             # It is possible for a lower value to be present
             new_new += [f]
 
@@ -1097,14 +1098,19 @@ def generate_factorization_possibilities(max_n, state):
             pdb.set_trace()
             assert False
 
-        assert factorize(n) in new
+        new = filter(new, state.all_factorizations)
 
+        assert factorize(n) in new
         state.all_factorizations.all_factorizations += [sorted(new)]
         state.all_factorizations.update_reverse_idx()
+
+
+
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = update_outstanding_and_finished(state.all_factorizations, new)
+
 
         logger.debug("  outstanding processing finished: outstanding=%s new_finished=%s",state.all_factorizations.outstanding,new_finished)
 
