@@ -1,4 +1,5 @@
 import math
+import pickle
 import collections
 import pdb
 import copy
@@ -67,7 +68,9 @@ def calculated_Z1(f, primes, factorizations):
     this is true for.
     """
     in_ = set()
+    a = 5
     for p in primes:
+        a = 5
         for x in factorizations:
             if p in x:
                 continue
@@ -661,11 +664,21 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             if len(y) == 1:
                 possible_primes += y
 
+    new_it_set = set()
+    for y in it_set:
+        valid = True
+        for x in y:
+            assert len(all_factorizations.reverse_idx[(x,)])==1
+            if len(all_factorizations[all_factorizations.reverse_idx[(x,)][0]]) > 1:
+                valid = False
+        if valid:
+            new_it_set.add(tuple(y))
+
     min_idx = {}
     max_idx = {}
     mask = {}
 
-    for y in it_set:
+    for y in new_it_set:
         d = set()
         d.add(y)
 
@@ -744,6 +757,12 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                     if found:
                        for z_ in all_factorizations[x_idx]:
                            d.add(tuple(z_))
+            # End for x_idx in range(0, len(all_factorizations)):
+            for x in range(0, len(mask[y])):
+                if mask[y][x]:
+                        for z in all_factorizations[x]:
+                            for zp in z:
+                                mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
 
         for x in range(0,2):
             present = set()
@@ -855,6 +874,12 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
             if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
                 continue
 
+            # correct = True
+            # if y == [5,17]:
+            #     for idx_ in range(0,len(all_factorizations)):
+            #         if mask[tuple(y)][idx_] and x[idx_] != factorize(idx_+2):
+            #                 correct = False
+
             possible_z, idx = calculated_Z(y, primes, x)
             possible_z1 = calculated_Z1(y, primes, x)
 
@@ -872,6 +897,7 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 possible = False
             elif (((ZIsPossible(possible_z,moebius_of_y) < (x.index(y)+2)))) or \
               (((Z1IsPossible(possible_z1,moebius_of_y) < (x.index(y)+2)))):
+                    ### Z1 here
                 # If the largest possible N for which Z(n) == possible_z is
                 # a lower position than where y is, then this is impossible
                 possible = False
@@ -984,9 +1010,7 @@ def generate_factorization_possibilities(max_n, state):
         n = state.n
         m = moebius(n)
 
-        if n == 52:
-            import pickle
-            pickle.dump(state, open("saved","wb"))
+        pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
 
         logger.info("Processing n=%d moebius=%d"%(n,m))
 
@@ -1104,9 +1128,6 @@ def generate_factorization_possibilities(max_n, state):
         state.all_factorizations.all_factorizations += [sorted(new)]
         state.all_factorizations.update_reverse_idx()
 
-
-
-
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = update_outstanding_and_finished(state.all_factorizations, new)
@@ -1134,6 +1155,7 @@ def generate_factorization_possibilities(max_n, state):
                         if [x[1]] not in state.eliminate[x[0]]:
                             state.eliminate[x[0]] += [x[1]]
                 state.n = min_+2
+                state.i += 1
 
                 state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
                 state.all_factorizations = state.possibilities_for_n[state.n]
