@@ -8,7 +8,9 @@ import sys
 import itertools
 import logging
 from functools import reduce
+from moebiusutil import *
 from util import *
+
 
 # FixMe: Factorizations should always be represented as a tuple.
 
@@ -68,9 +70,7 @@ def calculated_Z1(f, primes, factorizations):
     this is true for.
     """
     in_ = set()
-    a = 5
     for p in primes:
-        a = 5
         for x in factorizations:
             if p in x:
                 continue
@@ -96,7 +96,7 @@ def ord(t, o, factorizations):
     find one where both parts of this are less than the parts of
     other.
 
-    Returns -1 if t < o, 0 if t == o, 1 if t > o
+    Returns -1 if t < o, 0 if t == o, 1 if t > o.
     """
     t, o = simplify(t, o)
 
@@ -127,88 +127,17 @@ def ord(t, o, factorizations):
         # If t is in the list and o is not, t < o
         return -1
     if o_found and not t_found:
+        # If o is in the list and t is not, t < o
         return 1
     if t_found and t_index < o_index:
         # If both are found and t is earlier than o, t < o
         return -1
     if o_found and o_index < t_index:
+        # If both are found and t is later than o, t > o
         return 1
 
+    # Neither are found; return unknown
     return 99
-
-@memoized
-def Z(n):
-    """ Returns the real Z(n)"""
-    return len([moebius(x) for x in range(1,n+1) if moebius(x) == 0])
-
-@memoized
-def Z1(n):
-    """ Returns the real Z(n)"""
-    return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
-
-# FixMe: Merge ZIsPossible and Z1IsPossible
-@memoized
-def ZIsPossible(z, m):
-    """ Given z and m, return the last possible index it could occur at (-1 if impossible)"""
-    n = 2
-    z_ = 0
-    n_max = -1
-    while z_ <= z:
-        m_ = moebius(n)
-        z_ = Z(n)
-        if z_ == z and m_ == m:
-            n_max = n
-        n += 1
-    return n_max
-
-@memoized
-def Z1IsPossible(z, m):
-    """ Given z and m, return the last possible index it could occur at (-1 if impossible)"""
-    n = 2
-    z_ = 0
-    n_max = -1
-    while z_ <= z:
-        m_ = moebius(n)
-        z_ = Z1(n)
-        if z_ == z and m_ == m:
-            n_max = n
-        n += 1
-    return n_max
-
-@memoized
-def factorize(n):
-    """Returns the factorization of n"""
-    if n == 1: return []
-
-    assert n > 1
-    factors = []
-    for i in range(2, n + 1):
-        while (n % i) == 0:
-            return [i] + factorize(int(n/i))
-    if n != 1:
-        pdb.set_trace()
-    assert n == 1
-    return factors
-
-def moebius_factorization(f):
-    if len(set(f)) != len(f):
-        return 0
-    return int(math.pow(-1, len(f)))
-
-@memoized
-def moebius(n):
-    """Returns the moebius value of n
-
-    This function is described as:
-        moebius(n) == (-1)^m if the factorization of n is a product of m distinct primes
-        moebius(n) == 0 otherswise.
-    """
-
-    assert n > 0
-    if n == 1:
-        return 1
-
-    return moebius_factorization(factorize(n))
 
 def one_unique_prime_factorization(n, factorizations, p, f, smallest, all_factorizations, condition):
     """Returns the possible factorizations of n with no repeated factors.
@@ -314,6 +243,7 @@ def should_stop_search(n, possibilities, all_factorizations):
     result2 = len(possibilities) > (len(locs))
     #if result != result2: pdb.set_trace()
     #if n == 24 and result: pdb.set_trace()
+    #if result2: pdb.set_trace()
     return result2
     #return len(possibilities) > (len(locs))
 
@@ -345,7 +275,7 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
                       stop = True
                       break
                   if ord(possibility, p_prime_possibility, factorizations) == 1 or \
-                    ord_absolute(possibility, p_prime_possibility, all_factorizations) == 1:
+                    all_factorizations.ord_absolute(possibility, p_prime_possibility) == 1:
                       stop = True
                       break
                if stop:
@@ -362,6 +292,12 @@ def new_repeated_prime_factorizations(n, primes, factorizations, all_factorizati
        prime_location_map = new_locs
        #if len(results) > 1: pdb.set_trace()
        if results and should_stop_search(n, results, all_factorizations):
+           if (11, 11) in results: pdb.set_trace()
+           correct = True
+           for x in range(0, len(factorizations)):
+               if factorizations[x] != factorize(x+2):
+                   correct = False
+           #if correct: pdb.set_trace()
            break
 
    return [list(x) for x in results], f_idx
@@ -380,9 +316,8 @@ def prune_elements_lt(n, factorizations, factorization, all_factorizations):
 
         for y in range(0, len(factorizations)):
             if x == y: continue
-            if ord_absolute(factorizations[x],
-                            factorizations[y],
-                            all_factorizations) != 1:
+            if all_factorizations.ord_absolute(factorizations[x],
+                            factorizations[y]) != 1:
                 x_greater_than_all = False
                 break
         if not x_greater_than_all:
@@ -391,129 +326,6 @@ def prune_elements_lt(n, factorizations, factorization, all_factorizations):
             #if moebius(n) == 0: pdb.set_trace()
             pass
     return keep
-
-def ord_absolute(t, o, all_factorizations):
-    # Returns whether t < o given the entire list of factorizations.  99 is unknown
-    t, o = simplify(t,o)
-    if not t and not o:
-        return 0
-
-    if not t:
-        return -1
-
-    if not o:
-        return 1
-
-    t_found, t_first_idx = index_recursive(all_factorizations,list(t),last=False)
-    t_found, t_last_idx = index_recursive(all_factorizations,list(t),last=True)
-    o_found, o_first_idx = index_recursive(all_factorizations,list(o),last=False)
-    o_found, o_last_idx = index_recursive(all_factorizations,list(o),last=True)
-
-    if not t_found and not o_found:
-        return 99
-
-    if t_found and not o_found and tuple(t) in all_factorizations.finished:
-        return -1
-
-    if o_found and not t_found and tuple(o) in all_factorizations.finished:
-        return 1
-
-
-    if tuple(t) not in all_factorizations.finished and tuple(o) not in all_factorizations.finished:
-        return 99
-
-    elif tuple(t) not in all_factorizations.finished and o_last_idx < t_first_idx:
-        return 1
-
-    elif tuple(t) not in all_factorizations.finished:
-        return 99
-
-    elif t_last_idx < o_first_idx:
-        return -1
-
-    elif o_last_idx < t_first_idx:
-        return 1
-
-    return 99
-
-
-def update_outstanding_and_finished(all_factorizations, new):
-    outstanding_count = collections.defaultdict(lambda : 0)
-    # For each outstanding factorization, how many trees exists where the
-    # factorization either exists or is less than everything in new.
-
-    total = 0
-    # Total number of lists we generate
-
-    new_outstanding = set()
-    new_finished = set()
-
-    outstanding = all_factorizations.outstanding
-
-    for n in new:
-        if tuple(n) not in all_factorizations.finished:
-            outstanding.add(tuple(n))
-
-    for o in all_factorizations.outstanding:
-
-
-
-        s, i = shared(o, all_factorizations)
-        lt = []
-        gt = []
-        equiv = []
-
-        for n in i:
-            r = ord_absolute(n, o, all_factorizations)
-            if r == -1:
-                lt += [n]
-            elif r == 1:
-                gt += [n]
-            else:
-                equiv += [n]
-        if len(s) >= len(lt)+len(equiv):
-            new_finished.add(o)
-        else:
-            new_outstanding.add(o)
-
-    outstanding = copy.copy(new_outstanding)
-    new_outstanding = set()
-    for o in outstanding:
-        all_lower = True
-        for y in new:
-            if ord_absolute(o,y,all_factorizations) > -1:
-                all_lower = False
-                break
-        if all_lower:
-            new_finished.add(o)
-        else:
-            new_outstanding.add(o)
-
-    #LT anything that's finished
-    outstanding = new_outstanding
-    new_outstanding = set()
-    for o in outstanding:
-        for y in all_factorizations.finished:
-            if ord_absolute(o,y,all_factorizations) == -1:
-                new_finished.add(o)
-                break
-        if o not in new_finished:
-            new_outstanding.add(o)
-
-
-    outstanding = new_outstanding
-
-    if len(new)==1:
-        new_finished.add(tuple(new[0]))
-    else:
-        for x in new:
-            if tuple(x) not in outstanding and \
-              tuple(x) not in all_factorizations.finished:
-                outstanding.add(tuple(x))
-    all_factorizations.finished |= new_finished
-    all_factorizations.outstanding = outstanding
-    return new_finished
-
 
 def generate_possibilities_for_factorization(n, m, factorizations, all_factorizations, start, end, prime_starting_cache, max_idx):
     """ Generate all possibilities for the given n and m. """
@@ -699,7 +511,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         primes += z
 
                     v = sorted([p,p] + z)
-                    val = ord_absolute(v,y,all_factorizations)
+                    val = all_factorizations.ord_absolute(v,y)
 
                     if val == 99:
                         # This factorization we are unsure about; possibly
@@ -722,7 +534,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
 
                     v = sorted([p] + z)
                     if True or len(v) == len(set(v)) and (len(set(v)) % 2) == 1:
-                        val = ord_absolute(v,y,all_factorizations)
+                        val = all_factorizations.ord_absolute(v,y)
 
                         if val == 99:
                             # This factorization we are unsure about; possibly
@@ -944,34 +756,6 @@ def all_eliminations(n, all_factorizations, new_finished):
 
     return e_, []
 
-def shared(f, all_factorizations):
-    items = set()
-    positions = set()
-    expand = set()
-    for p in all_factorizations.reverse_idx[tuple(f)]:
-        positions.add(p)
-        for i in all_factorizations[p]:
-            items.add(tuple(i))
-
-    start_positions = len(positions)
-
-    while True:
-        start_positions = len(positions)
-        new_i = set()
-        new_p = set()
-        for f in items:
-            for p in all_factorizations.reverse_idx[tuple(f)]:
-                new_p.add(p)
-                for i in all_factorizations[p]:
-                    new_i.add(tuple(i))
-        positions = positions.union(new_p)
-        items = items.union(new_i)
-        if len(positions) == start_positions:
-            break
-
-
-    return positions, items
-
 def filter(new, all_factorizations):
     # Filter out too-high values(more than enough space for all lower values)
     new_new = []
@@ -979,15 +763,15 @@ def filter(new, all_factorizations):
         lt = []
         gt = []
         equiv = []
-        p, i = shared(f, all_factorizations)
+        p, i = all_factorizations.shared(f)
         if len(p) == 0:
             for x in new:
-                p_, i_ = shared(x, all_factorizations)
+                p_, i_ = all_factorizations.shared(x)
                 p = p.union(p_)
                 i = i.union(i_)
 
         for n in i:
-            r = ord_absolute(n, f, all_factorizations)
+            r = all_factorizations.ord_absolute(n, f)
             if r == -1:
                 lt += [n]
             elif r == 1:
@@ -1074,6 +858,7 @@ def generate_factorization_possibilities(max_n, state):
         logger.debug("  # of options:"+str(count))
         new_new = []
         #pdb.set_trace()
+        logger.debug("  Initial possibilities: %s"%(str(new)))
         for possibility in new:
             primes_finished = set()
             found_all = True
@@ -1111,7 +896,10 @@ def generate_factorization_possibilities(max_n, state):
         new = new_new
 
         state.primes_starting_cache[m] = new_primes_starting_cache
-        logger.debug("  Initial possibilities: %s"%(str(new)))
+        logger.debug("  After filter1: %s"%(str(new)))
+
+        new = filter(new, state.all_factorizations)
+        logger.debug("  After filter2: %s"%(str(new)))
 
         if not factorize(n) in new or \
             (n == 92 and [2, 2, 2, 2, 2, 3] in new):
@@ -1122,22 +910,15 @@ def generate_factorization_possibilities(max_n, state):
             pdb.set_trace()
             assert False
 
-        new = filter(new, state.all_factorizations)
-
         assert factorize(n) in new
         state.all_factorizations.all_factorizations += [sorted(new)]
         state.all_factorizations.update_reverse_idx()
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
-        new_finished = update_outstanding_and_finished(state.all_factorizations, new)
+        new_finished = state.all_factorizations.update_outstanding_and_finished(new)
 
-
-        logger.debug("  outstanding processing finished: outstanding=%s new_finished=%s",state.all_factorizations.outstanding,new_finished)
-
-        all_potential_useful_z = new_finished
-
-        if all_potential_useful_z:
+        if new_finished:
             new_eliminate, new_z_calculated = all_eliminations(n, state.all_factorizations, new_finished)
 
             if new_eliminate:
