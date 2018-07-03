@@ -39,9 +39,6 @@ def factorize(n):
     assert n == 1
     return factors
 
-
-
-
 def index_recursive(lst, elt, last=False):
     """find elt in list of lists lst
 
@@ -71,7 +68,7 @@ def generate_all_possible_lists(lst, start_idx=0, end_idx=0, check_primality=Tru
     """ Yields each possible list, where each index in lst is a list of possibilities.
 
     The same possibility cannot be chose more than once."""
-    if lst == []:
+    if len(lst) == []:
         yield lst
     elif not retn:
         if not end_idx:
@@ -119,8 +116,9 @@ def generate_all_possible_lists_for_mask(lst, mask, idx=0, retn=[]):
     """ Yields each possible list, where each index in lst is a list of possibilities.
 
     The same possibility cannot be chose more than once."""
-    if lst == []:
+    if len(lst) == 0:
         yield lst
+
     elif not retn:
         #retn = [x[0] for x in lst]
         retn = []
@@ -218,6 +216,23 @@ class State(object):
         self.n = 2
         self.i = 1
 
+    def __eq__(self, other):
+        return \
+          self.n == other.n and \
+          self.i == other.i and \
+          self.all_factorizations == other.all_factorizations and \
+          self.start == other.start and \
+          self.end == other.end and \
+          self.eliminate == other.eliminate and \
+          self.start_for_n == other.start_for_n and \
+          self.end_for_n == other.end_for_n and \
+          self.possibilities_for_n == other.possibilities_for_n and \
+          self.primes_starting_cache == other.primes_starting_cache
+
+
+    def __str__(self):
+        return "{ n: %d i: %d }" % (self.n, self.i)
+
 class FactorizationPossibilities(object):
     # Represents the 'tree' of factorization possibilities.  Not represented as
     # a tree for performance reasons; instead, a list-of-lists, where
@@ -251,6 +266,13 @@ class FactorizationPossibilities(object):
 
         self.outstanding = set()
         # All the factorizations we have generated that are not finished.
+
+    def __eq__(self, other):
+        return \
+          self.all_factorizations == other.all_factorizations and \
+          self.reverse_idx == other.reverse_idx and \
+          self.finished == other.finished and \
+          self.outstanding == other.outstanding
 
     def update_reverse_idx(self):
         # Should be called after updating self.all_factorizations FixMe: Should

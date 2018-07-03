@@ -739,7 +739,18 @@ def generate_factorization_possibilities(max_n, state):
         n = state.n
         m = moebius(n)
 
+        # Test
+        #test_state = pickle.load(open("saves/n=%di=%d"%(state.n, state.i)))
+        #test_state=n = int(test_state.n)
+
+
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
+
+        test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
+        test_state.n = int(test_state.n)
+        assert test_state == state
+
+
 
         logger.info("Processing n=%d moebius=%d"%(n,m))
 
