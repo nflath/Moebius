@@ -403,43 +403,6 @@ def generate_possibilities_for_factorization(n, m, factorizations, all_factoriza
     else:
         assert False
 
-def all_confusions(all_factorizations, finished):
-    all_confusions = set()
-    for x in all_factorizations:
-        if len(x) == 1:
-            continue
-        else:
-            allfinished = True
-            factors = []
-            for y in x:
-                if tuple(y) not in finished:
-                    allfinished = False
-                    break
-                else:
-                    factors += y
-            if allfinished:
-                all_confusions.add(tuple(sorted(tuple(factors))))
-    return all_confusions
-
-def all_combinations_not_calculated(all_confusions, z_calculated):
-    all_potential_useful_z = set()
-    for x in all_confusions:
-        for y in range(1,len(x)):
-            for z in itertools.combinations(x,y):
-                if tuple(z) not in z_calculated:
-                    all_potential_useful_z.add(z)
-    return all_potential_useful_z
-
-def all_potentially_useful_z(all_factorizations,
-                             z_calculated,
-                             blocked_potential_useful_z,
-                             finished,
-                             new_finished):
-    """ Returns all n for which Z(n) may be useful """
-    all_confusions_ = all_confusions(all_factorizations, finished)
-    all_potential_useful_z = all_combinations_not_calculated(all_confusions_, z_calculated)
-    return all_potential_useful_z | new_finished
-
 def ranges_for_z_calculations(n, all_factorizations, it_set):
     """Calculates the range in all_factorization that each factorization is concerned with.
 
