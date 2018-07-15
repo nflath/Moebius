@@ -125,7 +125,6 @@ def generate_all_possible_lists_for_mask(lst, mask, idx=0, retn=[]):
         for x in generate_all_possible_lists(lst):
             retn = x
             break
-
         for y in generate_all_possible_lists_for_mask(lst, mask, idx, retn):
             yield y
     elif idx == len(retn):
@@ -144,9 +143,8 @@ def generate_all_possible_lists_for_mask(lst, mask, idx=0, retn=[]):
                     if z not in retn[:idx]:
                         retn[idx] = z
                         break
-                if retn[idx] in retn[:idx]:
-                    return
-
+            if retn[idx] in retn[:idx]:
+                return
             for y in generate_all_possible_lists_for_mask(lst, mask, idx + 1, retn):
                 yield y
 

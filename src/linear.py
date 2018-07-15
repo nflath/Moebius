@@ -177,7 +177,6 @@ def new_unique_prime_factorizations(n, odd, primes, factorizations, all_factoriz
         f_idx_start = 0
         if p in unique_primes_starting_cache:
             f_idx_start = unique_primes_starting_cache[p]
-
         for f_idx in range(f_idx_start, min(len(factorizations),max_f_idx+1)):
 
             f = factorizations[f_idx]
@@ -772,6 +771,11 @@ def generate_factorization_possibilities(max_n, state):
         logger.debug("  possibility generation: start: %d end: %d"%(s,e))
 
         mask = [True]*e+[False]*len(state.all_factorizations)
+        for x in state.all_factorizations[:e]:
+            for y in x:
+                for z in state.all_factorizations.reverse_idx[tuple(y)]:
+                    mask[z] = True
+        #pdb.set_trace()
         # for x in state.all_factorizations.outstanding:
         #     if moebius_factorization(x)==moebius(n):
         #         for y in state.all_factorizations.reverse_idx[tuple(x)]:
@@ -838,6 +842,7 @@ def generate_factorization_possibilities(max_n, state):
                        _, idx__ = index_recursive(state.all_factorizations, y, last=True)
                        found, _ = index_recursive(state.all_factorizations, x, last=True)
                        if idx__ < idx and not found:
+                          #if possibility == [2,42]: pdb.set_trace()
                           found_all = False
                           break
                    if not found_all:
