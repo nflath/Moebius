@@ -220,15 +220,20 @@ class State(object):
         return \
           self.n == other.n and \
           self.i == other.i and \
-          self.all_factorizations == other.all_factorizations and \
-          self.start == other.start and \
-          self.end == other.end and \
-          self.eliminate == other.eliminate and \
-          self.start_for_n == other.start_for_n and \
-          self.end_for_n == other.end_for_n and \
-          self.possibilities_for_n == other.possibilities_for_n and \
-          self.primes_starting_cache == other.primes_starting_cache
+          self.all_factorizations == other.all_factorizations# and \
+          #self.start == other.start and \
+          #self.end == other.end and \
+          #self.eliminate == other.eliminate and \
+          #self.start_for_n == other.start_for_n and \
+          #self.end_for_n == other.end_for_n and \
+          #self.possibilities_for_n == other.possibilities_for_n and \
+          #self.primes_starting_cache == other.primes_starting_cache
 
+    def compare_and_print(self, other):
+        print("DIFFERENCES")
+        if self.n != other.n: print("n: %d vs %d", self.n, other.n)
+        if self.n != other.n: print("i n: %d vs %d", self.i, other.i)
+        self.all_factorizations.compare_and_print(other.all_factorizations)
 
     def __str__(self):
         return "{ n: %d i: %d }" % (self.n, self.i)
@@ -270,9 +275,14 @@ class FactorizationPossibilities(object):
     def __eq__(self, other):
         return \
           self.all_factorizations == other.all_factorizations and \
-          self.reverse_idx == other.reverse_idx and \
           self.finished == other.finished and \
           self.outstanding == other.outstanding
+          #self.reverse_idx == other.reverse_idx and \
+
+    def compare_and_print(self, other):
+        for x in range(0, len(self.all_factorizations)):
+            if self.all_factorizations[x] != other.all_factorizations[x]:
+                print("  %d: %s\t\t%s" % (x+2,str(self.all_factorizations[x]), str(other.all_factorizations[x])))
 
     def update_reverse_idx(self):
         # Should be called after updating self.all_factorizations FixMe: Should
@@ -386,6 +396,7 @@ class FactorizationPossibilities(object):
 
     def ord_absolute(self, t, o):
         """ Returns whether t < o given the entire list of factorizations.  """
+        # FixMe FixMe FixMe
         t, o = simplify(t,o)
         if not t and not o:
             return 0
