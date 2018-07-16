@@ -54,13 +54,13 @@ def calculated_Z(f, primes, factorizations):
             possibility = sorted([p,p]+x)
             val = ord(possibility, f, factorizations)
             if val == 99:
-                return -1, (possibility, factorizations)
+                return -1
             if val <= 0:
                 max_idx = max(max_idx, x_idx)
                 in_.add(tuple(possibility))
             else:
                 break
-    return len(in_), None
+    return len(in_)
 
 def calculated_Z1(f, primes, factorizations):
     """Calculates Z1(f).
@@ -629,16 +629,7 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
 
             y = list(y)
 
-            if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
-                continue
-
-            # correct = True
-            # if y == [5,17]:
-            #     for idx_ in range(0,len(all_factorizations)):
-            #         if mask[tuple(y)][idx_] and x[idx_] != factorize(idx_+2):
-            #                 correct = False
-
-            possible_z, idx = calculated_Z(y, primes, x)
+            possible_z = calculated_Z(y, primes, x)
             possible_z1 = calculated_Z1(y, primes, x)
 
             z_is_possible = ZIsPossible(possible_z,moebius_of_y)
@@ -666,6 +657,9 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 # If the Z we calculated doesn't match Z(n) for this, just
                 # exit.
                 possible = False
+            if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
+                continue
+
 
             if possible:
                 for i in range(0, len(e)):
