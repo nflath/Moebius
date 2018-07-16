@@ -736,9 +736,9 @@ def generate_factorization_possibilities(max_n, state):
         try:
            test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
            test_state.n = int(test_state.n)
-           # if test_state != state:
-           #     state.compare_and_print(test_state)
-           #     assert False
+           if test_state != state:
+               state.compare_and_print(test_state)
+               assert False
         except:
             pass
         #assert test_state == state
