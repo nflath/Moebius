@@ -405,10 +405,20 @@ class FactorizationPossibilities(object):
         if not o:
             return 1
 
-        t_found, t_first_idx = index_recursive(self,list(t),last=False)
-        t_found, t_last_idx = index_recursive(self,list(t),last=True)
-        o_found, o_first_idx = index_recursive(self,list(o),last=False)
-        o_found, o_last_idx = index_recursive(self,list(o),last=True)
+        t = tuple(t)
+        o = tuple(o)
+        t_found = self.reverse_idx[t]
+        o_found = self.reverse_idx[o]
+        t_first_idx = None
+        t_last_idx = None
+        o_first_idx = None
+        o_last_idx = None
+        if t_found:
+            t_first_idx = self.reverse_idx[t][0]
+            t_last_idx = self.reverse_idx[t][-1]
+        if o_found:
+            o_first_idx = self.reverse_idx[o][0]
+            o_last_idx = self.reverse_idx[o][-1]
 
         if not t_found and not o_found:
             return 99
