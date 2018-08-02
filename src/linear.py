@@ -553,41 +553,40 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             for x_idx in range(0, len(all_factorizations)):
 
                 for z in all_factorizations[x_idx]:
-
-                    v = sorted([p,p] + z)
                     for v in (sorted([p,p] + z), sorted([p] + z)):
+
                         val = all_factorizations.ord_absolute(v,y)
+                        if tuple(z) == y:
+                            mask[y][x_idx] = True
 
                         if val == 99:
 
                             t, o = simplify(v, y)
 
-                            t_found, t_idx = index_recursive(all_factorizations, t)
-                            t_found_last, t_idx_last = index_recursive(all_factorizations, t, last=True)
+                            for idx in all_factorizations.reverse_idx[tuple(v)]:
+                                mask[y][idx] = True
 
-                            for x in range(t_idx,t_idx_last+1):
-                                mask[y][x] = True
+                            if tuple(o) != y:
+                                for idx in all_factorizations.reverse_idx[tuple(t)]:
+                                    mask[y][idx] = True
+                                for idx in all_factorizations.reverse_idx[tuple(o)]:
+                                    mask[y][idx] = True
 
-                            o_found, o_idx = index_recursive(all_factorizations, o)
-                            o_found_last, o_idx_last = index_recursive(all_factorizations, o, last=True)
-
-                            for x in range(o_idx,o_idx_last+1):
-                                mask[y][x] = True
 
                     # FixMe: What
-                    if z == list(y):
-                        mask[y][x_idx] = True
-                    found = False
-                    for d_ in d:
-                        if list(z) == sorted(list(d_)+[p]):
-                          mask[y][x_idx] = True
-                          found = True
-                    if list(y) == sorted(z + [p]):
-                        mask[y][x_idx] = True
-                        found = True
-                    if found:
-                       for z_ in all_factorizations[x_idx]:
-                           d.add(tuple(z_))
+                    # if z == list(y):
+                    #     mask[y][x_idx] = True
+                    # found = False
+                    # for d_ in d:
+                    #     if list(z) == sorted(list(d_)+[p]):
+                    #       mask[y][x_idx] = True
+                    #       found = True
+                    # if list(y) == sorted(z + [p]):
+                    #     mask[y][x_idx] = True
+                    #     found = True
+                    # if found:
+                    #    for z_ in all_factorizations[x_idx]:
+                    #        d.add(tuple(z_))
 
             # End for x_idx in range(0, len(all_factorizations)):
             for x in range(0, len(mask[y])):
@@ -683,7 +682,13 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
 
     for y in mask:
         if len(y) == 1: continue
-        logger.debug("  About to analyze masked Z for y="+str(y))
+        logger.debug("  About to analyze masked Z for y="+str(y)+" "+str(mask[y]))
+
+        cnt = 0
+        for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
+            cnt += 1
+        logger.debug("  Count = "+str(cnt))
+
         e = copy.deepcopy(all_factorizations.all_factorizations)
         for idx in range(0, len(all_factorizations)):
             if not mask[y][idx]:
@@ -708,30 +713,33 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
             z_is_possible = ZIsPossible(possible_z,moebius_of_y)
 
             possible = True
-            if possible_z1 == -1 or possible_z == -1 or y not in x:
+            if possible_z == -1:
                 # We can't figure everything out; just go ahead and delete our work
                 # FixMe: This should be impossible
                 assert False
-                e = {}
-                break
-            elif z_is_possible == -1 or \
-                 Z1IsPossible(possible_z1,moebius_of_y) == -1:
+            if z_is_possible == -1:
+                continue
+            if (z_is_possible < (x.index(y)+2)):
+                continue
+            if (possible_z != Z(x.index(y)+2)):
+                continue
+            elif possible_z1 == -1:
+               assert False
+            elif Z1IsPossible(possible_z1,moebius_of_y) == -1:
                 # If there is no n where Z(n) == possible_z with the correct
                 # moebius, this is impossible.
-                possible = False
-            elif (((z_is_possible < (x.index(y)+2)))) or \
-              (((Z1IsPossible(possible_z1,moebius_of_y) < (x.index(y)+2)))):
+                continue
+            elif (Z1IsPossible(possible_z1,moebius_of_y) < (x.index(y)+2)):
                     ### Z1 here
                 # If the largest possible N for which Z(n) == possible_z is
                 # a lower position than where y is, then this is impossible
-                possible = False
-            elif (possible_z != Z(x.index(y)+2)) or \
-              (possible_z1 != Z1(x.index(y)+2)):
+                continue
+            elif (possible_z1 != Z1(x.index(y)+2)):
                 # If the Z we calculated doesn't match Z(n) for this, just
                 # exit.
-                possible = False
-            if not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
                 continue
+            elif not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
+                pass#continue
 
 
             if possible:
