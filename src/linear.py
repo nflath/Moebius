@@ -572,22 +572,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                                 for idx in all_factorizations.reverse_idx[tuple(o)]:
                                     mask[y][idx] = True
 
-
-                    # FixMe: What
-                    # if z == list(y):
-                    #     mask[y][x_idx] = True
-                    # found = False
-                    # for d_ in d:
-                    #     if list(z) == sorted(list(d_)+[p]):
-                    #       mask[y][x_idx] = True
-                    #       found = True
-                    # if list(y) == sorted(z + [p]):
-                    #     mask[y][x_idx] = True
-                    #     found = True
-                    # if found:
-                    #    for z_ in all_factorizations[x_idx]:
-                    #        d.add(tuple(z_))
-
             # End for x_idx in range(0, len(all_factorizations)):
             for x in range(0, len(mask[y])):
                 if mask[y][x]:
