@@ -577,7 +577,8 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                 if mask[y][x]:
                         for z in all_factorizations[x]:
                             for zp in z:
-                                mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
+                                if len(all_factorizations.reverse_idx[(zp,)]) > 1:
+                                    mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
 
         for x in range(0,2):
             present = set()
