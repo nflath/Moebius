@@ -340,6 +340,7 @@ class FactorizationPossibilities(object):
             else:
                 new_outstanding.add(o)
 
+
         #LT anything that's finished
         outstanding = new_outstanding
         new_outstanding = set()
@@ -350,8 +351,6 @@ class FactorizationPossibilities(object):
                     break
             if o not in new_finished:
                 new_outstanding.add(o)
-
-
         outstanding = new_outstanding
 
         if len(new)==1:
@@ -359,10 +358,15 @@ class FactorizationPossibilities(object):
         else:
             for x in new:
                 if tuple(x) not in outstanding and \
-                  tuple(x) not in self.finished:
+                  tuple(x) not in self.finished and \
+                  tuple(x) not in new_finished:
                     outstanding.add(tuple(x))
         self.finished |= new_finished
         self.outstanding = outstanding
+
+        for f in self.finished:
+            assert f not in self.outstanding
+
         return new_finished
 
     def shared(self, f):
