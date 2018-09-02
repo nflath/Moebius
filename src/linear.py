@@ -736,8 +736,8 @@ def generate_factorization_possibilities(max_n, state):
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = state.all_factorizations.update_outstanding_and_finished(new)
-        lowest = eliminate_based_on_gt(n, state.all_factorizations, new_finished)
-        logger.debug("  new_finished: %s"%str(new_finished))
+        #lowest = eliminate_based_on_gt(n, state.all_factorizations, new_finished)
+        #logger.debug("  new_finished: %s"%str(new_finished))
         # if lowest != n - 2:
         #     #pdb.set_trace()
         #     state.n = lowest+2
