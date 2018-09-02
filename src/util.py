@@ -270,6 +270,8 @@ class FactorizationPossibilities(object):
         self.outstanding = set()
         # All the factorizations we have generated that are not finished.
 
+        self.lt_cache = {}
+
     def __eq__(self, other):
         return \
           self.all_factorizations == other.all_factorizations and \
@@ -396,10 +398,18 @@ class FactorizationPossibilities(object):
 
         return positions, items
 
+    def register_lt(self, t, o):
+        #pdb.set_trace()
+        self.lt_cache[(tuple(t),tuple(o))] = -1
+        self.lt_cache[(tuple(o),tuple(t))] = 1
+
     def ord_absolute(self, t, o):
-        """ Returns whether t < o given the entire list of factorizations.  """
-        # FixMe FixMe FixMe
         t, o = simplify(t,o)
+        return self.ord(t, o)
+
+    def ord(self, t, o):
+        """ Returns whether t < o given the entire list of factorizations.  """
+
         if not t and not o:
             return 0
 
@@ -411,6 +421,11 @@ class FactorizationPossibilities(object):
 
         t = tuple(t)
         o = tuple(o)
+
+        if (t,o) in self.lt_cache:
+            return self.lt_cache[(t,o)]
+
+        if t == o: return 0
         t_found = self.reverse_idx[t]
         o_found = self.reverse_idx[o]
         t_first_idx = None
@@ -423,6 +438,8 @@ class FactorizationPossibilities(object):
         if o_found:
             o_first_idx = self.reverse_idx[o][0]
             o_last_idx = self.reverse_idx[o][-1]
+
+
 
         if not t_found and not o_found:
             return 99

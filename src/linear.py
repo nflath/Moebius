@@ -139,6 +139,54 @@ def ord(t, o, factorizations):
     # Neither are found; return unknown
     return 99
 
+def ord_(t, o, factorizations):
+    """Returns whether this < other for a specific factorization possibility.
+
+    Check each permutation and 2-way split of this and other to try and
+    find one where both parts of this are less than the parts of
+    other.
+
+    Returns -1 if t < o, 0 if t == o, 1 if t > o.
+    """
+    if not t and not o or t == o:
+        return 0
+    if not t:
+        return -1
+    if not o:
+        return 1
+
+    t_index = None
+    o_index = None
+
+    try:
+        t_index = factorizations.index(t)
+    except:
+        pass
+
+    try:
+        o_index = factorizations.index(o)
+    except:
+        pass
+
+    t_found = t_index is not None
+    o_found = o_index is not None
+
+    if t_found and not o_found:
+        # If t is in the list and o is not, t < o
+        return -1
+    if o_found and not t_found:
+        # If o is in the list and t is not, t < o
+        return 1
+    if t_found and t_index < o_index:
+        # If both are found and t is earlier than o, t < o
+        return -1
+    if o_found and o_index < t_index:
+        # If both are found and t is later than o, t > o
+        return 1
+
+    # Neither are found; return unknown
+    return 99
+
 def should_stop_search(n, possibilities, all_factorizations):
     # We should stop the search if it's not possible for all of the possibilities
     # to be in all_factorizations at the same time.
@@ -517,6 +565,8 @@ def filter(new, all_factorizations):
                 p_, i_ = all_factorizations.shared(x)
                 p = p.union(p_)
                 i = i.union(i_)
+                #pdb.set_trace()
+                i.add(tuple(x))
 
         for n in i:
             r = all_factorizations.ord_absolute(n, f)
@@ -531,6 +581,42 @@ def filter(new, all_factorizations):
             new_new += [f]
 
     return new_new
+
+def eliminate_based_on_gt(n, all_factorizations, new_finished):
+    lowest = n - 2
+    for f in new_finished:
+        for x in range(0, len(all_factorizations)):
+            for z in all_factorizations[x]:
+                t, o = simplify(f, z)
+                if all_factorizations.ord(list(f), list(z)) == 1 and all_factorizations.ord(t,o) == 99:
+                    all_factorizations.register_lt(o,t)
+                    logger.info("   %s < %s based on %s",o,t,f)
+                    lowest = min(lowest, all_factorizations.reverse_idx[tuple(o)][0])
+                if all_factorizations.ord(list(f), list(z)) == 1 and all_factorizations.ord(t,o) == 99:
+                    all_factorizations.register_lt(t,o)
+                    logger.info("   %s < %s based on %s",t,o,f)
+                    lowest = min(lowest, all_factorizations.reverse_idx[tuple(t)][0])
+
+    for f in new_finished:
+        for x in range(0, len(all_factorizations)):
+            #if f == (2,2,2,2,2) and x == 6: pdb.set_trace()
+            if len(all_factorizations[x]) > 1:
+                for z in all_factorizations[x]:
+                    t, o = simplify(f, z)
+                    if f == (2,2,2,2,2) and z == (2,2,2): pdb.set_trace()
+                    if tuple(z) != f and tuple(t) != f and not o:
+                        for z2 in all_factorizations[x]:
+                            if all_factorizations.ord(list(f), sorted(z2+t)) == 1 and \
+                                all_factorizations.ord(z, z2) == 99:
+                                all_factorizations.register_lt(z2, z)
+                                logger.info("   %s < %s based on %s",z2,z,f)
+                                lowest = min(lowest, all_factorizations.reverse_idx[tuple(z2)][0])
+                            if all_factorizations.ord(list(f), sorted(z2+t)) == -1 and \
+                                all_factorizations.ord(z, z2) == 99:
+                                all_factorizations.register_lt(z, z2)
+                                logger.info("   %s < %s based on %s",z,z2,f)
+                                lowest = min(lowest, all_factorizations.reverse_idx[tuple(z)][0])
+    return lowest
 
 def generate_factorization_possibilities(max_n, state):
     """ Generates the list of possible factorizations from start_n to max_n. """
@@ -618,7 +704,6 @@ def generate_factorization_possibilities(max_n, state):
                        _, idx__ = index_recursive(state.all_factorizations, y, last=True)
                        found, _ = index_recursive(state.all_factorizations, x, last=True)
                        if idx__ < idx and not found:
-                          #if possibility == [2,42]: pdb.set_trace()
                           found_all = False
                           break
                    if not found_all:
@@ -630,7 +715,6 @@ def generate_factorization_possibilities(max_n, state):
                 new_new += [possibility]
         new = new_new
 
-        state.primes_starting_cache[m] = new_primes_starting_cache
         logger.debug("  After filter1: %s"%(str(new)))
 
         new = filter(new, state.all_factorizations)
@@ -652,6 +736,19 @@ def generate_factorization_possibilities(max_n, state):
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = state.all_factorizations.update_outstanding_and_finished(new)
+        lowest = eliminate_based_on_gt(n, state.all_factorizations, new_finished)
+        logger.debug("  new_finished: %s"%str(new_finished))
+        # if lowest != n - 2:
+        #     #pdb.set_trace()
+        #     state.n = lowest+2
+        #     state.i += 1
+        #     state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
+        #     lt_cache = state.all_factorizations.lt_cache
+        #     state.all_factorizations = state.possibilities_for_n[state.n]
+        #     state.all_factorizations.lt_cache = lt_cache
+        #     state.start = state.start_for_n[n]
+        #     state.end = state.end_for_n[n]
+        #     continue
 
         if new_finished:
             new_eliminate, new_z_calculated = all_eliminations(n, state.all_factorizations, new_finished)
