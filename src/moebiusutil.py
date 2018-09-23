@@ -11,28 +11,32 @@ def Z1(n):
     """ Returns the real Z(n)"""
     return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
 
-def ZIsPossibleBase(z,m,ZFn):
+def in_range(val, min, max):
+    return val <= max and val >= min
+
+
+def ZIsPossibleBase(z_min,z_max,m,ZFn):
     """Return the last possible value of n z and m can occur at."""
     n = 2
     z_ = 0
     n_max = -1
-    while z_ <= z:
+    while z_ <= z_max:
         m_ = moebius(n)
         z_ = ZFn(n)
-        if z_ == z and m_ == m:
+        if in_range(z_,z_min,z_max) and m_ == m:
             n_max = n
         n += 1
     return n_max
 
 @memoized
-def ZIsPossible(z, m):
+def ZIsPossible(z_min,z_max, m):
     """Return the last possible value of n z and m can occur at."""
-    return ZIsPossibleBase(z,m,Z)
+    return ZIsPossibleBase(z_min,z_max,m,Z)
 
 @memoized
-def Z1IsPossible(z, m):
+def Z1IsPossible(z_min,z_max, m):
     """Return the last possible value of n z and m can occur at."""
-    return ZIsPossibleBase(z,m,Z1)
+    return ZIsPossibleBase(z_min,z_max,m,Z1)
 
 
 @memoized

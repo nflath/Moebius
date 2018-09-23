@@ -1,3 +1,7 @@
+# TODO:
+# Old approach: Mask Eliminating [n=52,[2, 5, 5]] based on: [2, 2, 13]
+# Old approach: Mask Eliminating [n=54,[2, 2, 13]] based on: [2, 2, 13]
+# Old approach: Mask Eliminating [n=54,[2, 5, 5]] based on: [2, 2, 13]
 import math
 import pickle
 import collections
@@ -32,7 +36,7 @@ def setupLogger():
     logger.addHandler(fh)
     logger.addHandler(ch)
 
-def calculated_Z(f, primes, factorizations):
+def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
     """Calculates Z(f).
 
     For each prime 'p', counts the number of factorizations 'a' where
@@ -44,7 +48,7 @@ def calculated_Z(f, primes, factorizations):
     for p in primes:
         val = ord([p,p], f, factorizations)
         if val == 99:
-            return -1, ([p,p],factorizations)
+            break
         if val  <= 0:
             in_.add((p,p))
         else:
@@ -54,15 +58,35 @@ def calculated_Z(f, primes, factorizations):
             possibility = sorted([p,p]+x)
             val = ord(possibility, f, factorizations)
             if val == 99:
-                return -1
+                break
             if val <= 0:
                 max_idx = max(max_idx, x_idx)
                 in_.add(tuple(possibility))
             else:
                 break
-    return len(in_)
 
-def calculated_Z1(f, primes, factorizations):
+    pos = set()
+    in_y = set()
+    in_both = set()
+    for idx in all_factorizations.reverse_idx[tuple(f)]:
+        if idx == y_idx:
+            if tuple(f) not in in_ and len(set(f)) != len(f):
+                pos.add(idx)
+                in_y.add(tuple(f))
+            break
+        for z in all_factorizations[idx]:
+            if len(set(z)) != len(z):
+                pos.add(idx)
+                if tuple(z) not in in_:
+                    in_y.add(tuple(z))
+                else:
+                    in_both.add(tuple(z))
+
+
+    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
+      len(in_) + min(len(pos),len(in_y))
+
+def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx):
     """Calculates Z1(f).
 
     For each prime 'p', counts the number of factorizations 'a' where
@@ -82,12 +106,32 @@ def calculated_Z1(f, primes, factorizations):
             possibility = sorted([p]+x)
             val = ord(possibility, f, factorizations)
             if val == 99:
-                return -1
+                break
             elif val <= 0:
                 in_.add(tuple(possibility))
             else:
                 break
-    return len(in_)
+
+    pos = set()
+    in_y = set()
+    in_both = set()
+    for idx in range(all_factorizations.reverse_idx[tuple(f)][0],len(all_factorizations)):
+        if idx == y_idx:
+            if tuple(f) not in in_ and len(set(f)) == len(f) and len(f) % 2 == 0:
+                pos.add(idx)
+                in_y.add(tuple(f))
+            break
+        for z in all_factorizations[idx]:
+            if len(set(z)) == len(z) and len(z) % 2 == 0:
+                pos.add(idx)
+                if tuple(z) not in in_:
+                    in_y.add(tuple(z))
+                else:
+                    in_both.add(tuple(z))
+
+
+    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
+      len(in_) + min(len(pos),len(in_y))
 
 def ord(t, o, factorizations):
     """Returns whether this < other for a specific factorization possibility.
@@ -352,7 +396,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             for x_idx in range(0, len(all_factorizations)):
 
                 for z in all_factorizations[x_idx]:
-                    for v in (sorted([p,p] + z), sorted([p] + z)):
+                    for v in (sorted([p,p] + z), sorted([p]+z)):
 
                         val = all_factorizations.ord_absolute(v,y)
                         if tuple(z) == y:
@@ -392,78 +436,20 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         if tuple(z) in present:
                             mask[y][x_idx] = True
 
+        present = set()
+        for y_idx in all_factorizations.reverse_idx[y]:
+            mask[y][y_idx] = False
+            for z in all_factorizations[y_idx]:
+                present.add(tuple(z))
+
+        for x_idx in range(0,len(all_factorizations)):
+            for z in all_factorizations[x_idx]:
+                if tuple(z) in present:
+                    mask[y][x_idx] = False;
     return mask
-
-def is_consistent(n, factorization, all_factorizations, y, mask):
-    if len(y) == 1:
-        return True
-
-    yi = factorization.index(list(y))
-
-    primes = set()
-
-    for idx in range(0,len(y)):
-        p = y[idx]
-
-        rest = y[:idx] + y[idx+1:]
-
-        lt = True
-
-        i = -1
-        for x in factorization:
-            i = i + 1
-
-            if not mask[i]:
-                for z in all_factorizations[i]:
-                    if len(z) == 1:
-                        primes.add(tuple(z))
-
-                continue
-
-            if len(x)==1:
-                primes.add(tuple(x))
-
-
-            for p_ in x:
-                if tuple([p_]) not in primes:
-                    return False
-
-            if x == rest:
-                lt = False
-                continue
-
-            if lt:
-                v = sorted([p] + x)
-                if v not in factorization:
-                    if tuple(v) in all_factorizations.finished and \
-                      all_factorizations.reverse_idx[tuple(v)][-1] < factorization.index(y):
-                        continue
-                    return False
-                vi = factorization.index(v)
-
-                if vi >= yi:
-                    return False
-
-            else:
-                v = sorted([p] + x)
-                if v not in factorization:
-                    if ((tuple(v) not in all_factorizations.finished) or
-                        (tuple(v) in all_factorizations.finished and \
-                        all_factorizations.reverse_idx[tuple(v)][0] > factorization.index(y)) or
-                        len(all_factorizations.reverse_idx[tuple(v)])==0):
-                        continue
-                    return False
-
-                vi = factorization.index(v)
-
-                if vi <= yi:
-                    return False
-
-    return True
 
 def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask):
     eliminate = []
-
     for y in mask:
         if len(y) == 1: continue
         logger.debug("  About to analyze masked Z for y="+str(y)+" "+str(mask[y]))
@@ -478,58 +464,68 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
             if not mask[y][idx]:
                 e[idx] = []
 
-        for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
 
-            primes = [x[0] for x in x if len(x) == 1]
+        for y_idx in all_factorizations.reverse_idx[tuple(y)]:
+            #if n == 28 and y == (3,3,3): pdb.set_trace()
+            #if n == 46 and y == (2,3,7): pdb.set_trace()
+            for x in generate_all_possible_lists_for_mask(all_factorizations[:y_idx+1], mask[y][:y_idx+1]):
+                if n == 56 and y == (2,2,2,7) and y_idx == 54:
+                    correct = True
+                    for x_idx in range(0, len(x)):
+                         if mask[y][x_idx] and x[x_idx] != factorize(x_idx+2):
+                             correct = False
+                    #if correct: pdb.set_trace()
 
-            moebius_of_y = 0 # FixMe: move this out into a function
-            if len(set(y)) == len(y):
-                moebius_of_y = int(math.pow(-1,len(y)))
+                y_start_idx = all_factorizations.reverse_idx[tuple(y)][0]
+                x[y_idx] = list(y)
+                primes = [x[0] for x in x if len(x) == 1]
 
-            if list(y) not in x:
-                continue
+                moebius_of_y = 0 # FixMe: move this out into a function
+                if len(set(y)) == len(y):
+                    moebius_of_y = int(math.pow(-1,len(y)))
 
-            y = list(y)
+                if list(y) not in x:
+                    continue
 
-            possible_z = calculated_Z(y, primes, x)
-            possible_z1 = calculated_Z1(y, primes, x)
+                #if n == 32 and y == (2,2,2,2,2)  and x[12] == [2,7]: pdb.set_trace()
+                possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
+                possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
 
-            z_is_possible = ZIsPossible(possible_z,moebius_of_y)
+                z_is_possible = ZIsPossible(possible_z_min,possible_z_max,moebius_of_y)
+                z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
 
-            possible = True
-            if possible_z == -1:
-                # We can't figure everything out; just go ahead and delete our work
-                # FixMe: This should be impossible
-                assert False
-            if z_is_possible == -1:
-                continue
-            if (z_is_possible < (x.index(y)+2)):
-                continue
-            if (possible_z != Z(x.index(y)+2)):
-                continue
-            elif possible_z1 == -1:
-               assert False
-            elif Z1IsPossible(possible_z1,moebius_of_y) == -1:
-                # If there is no n where Z(n) == possible_z with the correct
-                # moebius, this is impossible.
-                continue
-            elif (Z1IsPossible(possible_z1,moebius_of_y) < (x.index(y)+2)):
-                    ### Z1 here
-                # If the largest possible N for which Z(n) == possible_z is
-                # a lower position than where y is, then this is impossible
-                continue
-            elif (possible_z1 != Z1(x.index(y)+2)):
-                # If the Z we calculated doesn't match Z(n) for this, just
-                # exit.
-                continue
-            elif not is_consistent(n, x, all_factorizations, y, mask[tuple(y)]):
-                pass#continue
+                possible = True
+                if (z_is_possible < (y_idx+2)):
+                    continue
+                if (not in_range(Z(y_idx+2),possible_z_min,possible_z_max)):
+                    continue
+                if (z1_is_possible < (y_idx+2)):
+                    continue
+                if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
+                    continue
+                #elif Z1IsPossible(possible_z1,moebius_of_y) == -1:
+                    # If there is no n where Z(n) == possible_z with the correct
+                    # moebius, this is impossible.
+                    #continue
+                #elif (Z1IsPossible(possible_z1,moebius_of_y) < (y_idx+2)):
+                        ### Z1 here
+                    # If the largest possible N for which Z(n) == possible_z is
+                    # a lower position than where y is, then this is impossible
+                    #continue
+                #elif (in_range(possible_z1, != Z1(y_idx+2)):
+                    # If the Z we calculated doesn't match Z(n) for this, just
+                    # exit.
+                    #continue
 
+                if possible:
+                    for i in range(0, len(e)):
 
-            if possible:
-                for i in range(0, len(e)):
-                    if x[i] in e[i]:
-                        e[i].remove(x[i])
+                        if i < len(x):
+
+                            if x[i] in e[i]:
+                                e[i].remove(x[i])
+                        else:
+                            e[i] = []
 
         for idx in range(0,len(e)):
            for z in e[idx]:
@@ -603,7 +599,7 @@ def eliminate_based_on_gt(n, all_factorizations, new_finished):
             if len(all_factorizations[x]) > 1:
                 for z in all_factorizations[x]:
                     t, o = simplify(f, z)
-                    if f == (2,2,2,2,2) and z == (2,2,2): pdb.set_trace()
+                    #if f == (2,2,2,2,2) and z == (2,2,2): pdb.set_trace()
                     if tuple(z) != f and tuple(t) != f and not o:
                         for z2 in all_factorizations[x]:
                             if all_factorizations.ord(list(f), sorted(z2+t)) == 1 and \
