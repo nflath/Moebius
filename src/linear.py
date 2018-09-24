@@ -15,7 +15,7 @@ from functools import reduce
 from moebiusutil import *
 from util import *
 
-
+ENABLE_Z1 = False
 # FixMe: Factorizations should always be represented as a tuple.
 
 # Global logger
@@ -396,8 +396,9 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             for x_idx in range(0, len(all_factorizations)):
 
                 for z in all_factorizations[x_idx]:
-                    for v in (sorted([p,p] + z), sorted([p]+z)):
-
+                    tup = (sorted([p,p] + z),)
+                    if ENABLE_Z1: tup = (sorted([p,p] + z), sorted([p]+z))
+                    for v in tup:
                         val = all_factorizations.ord_absolute(v,y)
                         if tuple(z) == y:
                             mask[y][x_idx] = True
@@ -489,20 +490,23 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
 
                 #if n == 32 and y == (2,2,2,2,2)  and x[12] == [2,7]: pdb.set_trace()
                 possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
-                possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
 
                 z_is_possible = ZIsPossible(possible_z_min,possible_z_max,moebius_of_y)
-                z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
 
                 possible = True
                 if (z_is_possible < (y_idx+2)):
                     continue
                 if (not in_range(Z(y_idx+2),possible_z_min,possible_z_max)):
                     continue
-                if (z1_is_possible < (y_idx+2)):
-                    continue
-                if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
-                    continue
+
+                if ENABLE_Z1:
+                    possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
+                    z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
+                    if (z1_is_possible < (y_idx+2)):
+                        continue
+                    if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
+                        continue
+
 
                 if possible:
                     for i in range(0, len(e)):
