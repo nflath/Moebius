@@ -503,19 +503,6 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                     continue
                 if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
                     continue
-                #elif Z1IsPossible(possible_z1,moebius_of_y) == -1:
-                    # If there is no n where Z(n) == possible_z with the correct
-                    # moebius, this is impossible.
-                    #continue
-                #elif (Z1IsPossible(possible_z1,moebius_of_y) < (y_idx+2)):
-                        ### Z1 here
-                    # If the largest possible N for which Z(n) == possible_z is
-                    # a lower position than where y is, then this is impossible
-                    #continue
-                #elif (in_range(possible_z1, != Z1(y_idx+2)):
-                    # If the Z we calculated doesn't match Z(n) for this, just
-                    # exit.
-                    #continue
 
                 if possible:
                     for i in range(0, len(e)):
