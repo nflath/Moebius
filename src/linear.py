@@ -556,6 +556,20 @@ def eliminate_based_on_gt(n, all_factorizations, new_finished):
                                 lowest = min(lowest, all_factorizations.reverse_idx[tuple(z)][0])
     return lowest
 
+def VerifySameAsTestdataIfCheckEnabled(state):
+    if not ENABLE_TESTS:
+        return
+    try:
+        test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
+        test_state.n = int(test_state.n)
+        if test_state != state:
+            state.compare_and_print(test_state)
+            assert test_state == state
+    except:
+        raise
+       #pass
+
+
 def generate_factorization_possibilities(max_n, state):
     """ Generates the list of possible factorizations from start_n to max_n. """
     global logger, calls, ord_cache
@@ -568,13 +582,14 @@ def generate_factorization_possibilities(max_n, state):
 
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
 
+        VerifySameAsTestdataIfCheckEnabled(state)
         if ENABLE_TESTS:
             try:
                 test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
                 test_state.n = int(test_state.n)
                 if test_state != state:
                     state.compare_and_print(test_state)
-                    assert False
+                    assert test_state == state
             except:
                 pass
             assert test_state == state
