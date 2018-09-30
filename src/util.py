@@ -213,6 +213,8 @@ class State(object):
         self.all_factorizations = FactorizationPossibilities()
         self.n = 2
         self.i = 1
+        self.locked = {}
+
 
     def __eq__(self, other):
         return \
@@ -399,6 +401,7 @@ class FactorizationPossibilities(object):
         return positions, items
 
     def register_lt(self, t, o):
+        if t == [30] and o == [2,3,5]: pdb.set_trace()
         #pdb.set_trace()
         self.lt_cache[(tuple(t),tuple(o))] = -1
         self.lt_cache[(tuple(o),tuple(t))] = 1
@@ -438,8 +441,6 @@ class FactorizationPossibilities(object):
         if o_found:
             o_first_idx = self.reverse_idx[o][0]
             o_last_idx = self.reverse_idx[o][-1]
-
-
 
         if not t_found and not o_found:
             return 99
