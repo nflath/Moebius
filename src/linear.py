@@ -11,7 +11,8 @@ from functools import reduce
 from util import *
 from filters import *
 from eliminate_z_analysis import all_eliminations
-from eliminate_gt import eliminate_based_on_gt
+from eliminate_gt import EliminateBasedOnGt
+from eliminate_locked import EliminateLocked
 from generate_new_factorizations import GenerateNewFactorizations
 
 ENABLE_TESTS = True
@@ -56,22 +57,19 @@ def VerifyRealFactorizationGenerated(state, new):
     assert factorize(n) in new # Will always fail
 
 def generate_factorization_possibilities(max_n, state):
-    """ Generates the list of possible factorizations from start_n to max_n. """
-    global logger, calls, ord_cache
-
+    """Generates possible factorizations from state.n to max_n."""
     state.logger.info("Program begin")
 
     while state.n <= max_n:
         state.logger.info("Processing n=%d i=%d moebius=%d"%(state.n,state.i,moebius(state.n)))
-        n = state.n
 
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
 
         VerifySameAsTestdataIfCheckEnabled(state)
 
-        state.possibilities_for_n[n] = copy.deepcopy(state.all_factorizations)
+        state.possibilities_for_n[state.n] = copy.deepcopy(state.all_factorizations)
 
-        new = GenerateNewFactorizations(n, state.all_factorizations)
+        new = GenerateNewFactorizations(state.n, state.all_factorizations)
 
         new = [p for p in new if not IsEliminated(state, p)]
         new = [p for p in new if not IsLowerThanFinished(state, p)]
@@ -84,16 +82,14 @@ def generate_factorization_possibilities(max_n, state):
         state.all_factorizations.all_factorizations += [sorted(new)]
         state.all_factorizations.update_reverse_idx()
         new_finished = state.all_factorizations.update_outstanding_and_finished(new)
-        lowest = eliminate_based_on_gt(state, new_finished)
 
-        if len(state.all_factorizations[-1]) == 1:
-            state.locked[tuple(state.all_factorizations[-1][0])] = n
-            if len(state.all_factorizations.reverse_idx[tuple(state.all_factorizations[-1][0])]) > 1:
-                lowest = min(lowest,
-                            state.all_factorizations.reverse_idx[tuple(state.all_factorizations[-1][0])][0]-2)
+        lowest = EliminateBasedOnGt(state, new_finished)
+        lowest = min(lowest, EliminateLocked(state))
 
 
-        if lowest != n - 2:
+
+
+        if lowest != state.n - 2:
             #pdb.set_trace()
             state.n = lowest+2
             state.i += 1
@@ -110,7 +106,7 @@ def generate_factorization_possibilities(max_n, state):
                 # all_factorizations and reset to continue calculations from
                 # the lowest point we changed
 
-                min_ = n-2
+                min_ = state.n-2
                 for x in new_eliminate:
                     if x[1] in state.all_factorizations[x[0]]:
                         min_ = min(min_,x[0])

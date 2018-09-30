@@ -189,11 +189,10 @@ class State(object):
         # Used for resetting when backtracking
 
         self.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
-        self.all_factorizations = FactorizationPossibilities()
+        self.all_factorizations = FactorizationPossibilities(self)
         self.n = 2
         self.i = 1
         self.locked = {}
-
 
     def __eq__(self, other):
         return \
@@ -233,7 +232,7 @@ class FactorizationPossibilities(object):
     #   - (index_recursive)
     #   - Updating finished/outstanding/reverse_idx
 
-    def __init__(self):
+    def __init__(self, logger):
         self.all_factorizations = []
         self.reverse_idx = collections.defaultdict(list)
         self.finished = set()
@@ -380,8 +379,8 @@ class FactorizationPossibilities(object):
         return positions, items
 
     def register_lt(self, t, o):
-        if t == [30] and o == [2,3,5]: pdb.set_trace()
-        #pdb.set_trace()
+        # FixMe: Extract to state, somehow
+        #self.logger.info("    %s < %s" % ( str(t), str(o)))
         self.lt_cache[(tuple(t),tuple(o))] = -1
         self.lt_cache[(tuple(o),tuple(t))] = 1
 
