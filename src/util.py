@@ -39,23 +39,6 @@ def factorize(n):
     assert n == 1
     return factors
 
-def index_recursive(lst, elt, last=False):
-    """find elt in list of lists lst
-
-    returns whether or not the element was found, and the index of the
-    list it was found in.  if last is set, returns the last index of the
-    list it was found in.
-    """
-    if tuple(elt) not in lst.reverse_idx:
-        return False, 0
-
-    if last:
-        if len(lst.reverse_idx[tuple(elt)])==0:
-            return False, -1
-        return True, lst.reverse_idx[tuple(elt)][-1]
-    if len(lst.reverse_idx[tuple(elt)])==0:
-        return False, -1
-    return True, lst.reverse_idx[tuple(elt)][0]
 
 
 def tupletized(l):
@@ -188,24 +171,9 @@ def simplify(this, other):
 class State(object):
 
     def __init__(self):
-        self.start = {0: 0, -1: 0, 1: 0}
-        # Currently unused
-
-        self.end = {0: 0, 1: 0, -1: 0}
-        # For each moebius value, which parts of the possibilities list we need to
-        # iterate over to generate all possible values.  This is a performance
-        # enhancement.  For example, at n=6, we start with the array: [ [2], [3],
-        # [2, 2], [5], [2,3]].  We know that next time we generate possibilities
-        # for a moebius value of 1, we don't have to go past [2,5] - start will be
-        # 0 and end will be 3.  Then, when we get to n=10 (the next n with a
-        # moebius value of 0), we don't need to generate possibilities twice, even
-        # though there are two possible factorization arrays.
-
         self.eliminate = collections.defaultdict(list)
         # All the possibilities we have eliminated based on various analzsis
 
-        self.start_for_n = {}
-        self.end_for_n = {}
         self.possibilities_for_n = {}
         # Used for resetting when backtracking
 

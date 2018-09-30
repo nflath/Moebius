@@ -1,7 +1,3 @@
-# TODO:
-# 51 [[3, 17], [5, 11]]
-# 52 [[2, 2, 13], [2, 3, 3, 3], [7, 7]]
-
 import math
 import pickle
 import collections
@@ -14,8 +10,10 @@ import logging
 from functools import reduce
 from moebiusutil import *
 from util import *
+from filters import *
 
 ENABLE_Z1 = True
+ENABLE_TESTS=True
 # FixMe: Factorizations should always be represented as a tuple.
 
 # Global logger
@@ -638,140 +636,49 @@ def generate_factorization_possibilities(max_n, state):
     logger.info("Program begin")
 
     while state.n <= max_n:
+        logger.info("Processing n=%d i=%d moebius=%d"%(state.n,state.i,moebius(state.n)))
         n = state.n
-        m = moebius(n)
-
-        # Test
-        #test_state = pickle.load(open("saves/n=%di=%d"%(state.n, state.i)))
-        #test_state=n = int(test_state.n)
-
-        logger.info("Processing n=%d i=%d moebius=%d"%(n,state.i,m))
 
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
 
-        # try:
-        #    test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
-        #    test_state.n = int(test_state.n)
-        #    if test_state != state:
-        #        state.compare_and_print(test_state)
-        #        assert False
-        # except:
-        #     pass
-        #assert test_state == state
-
-
+        if ENABLE_TESTS:
+            try:
+                test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
+                test_state.n = int(test_state.n)
+                if test_state != state:
+                    state.compare_and_print(test_state)
+                    assert False
+            except:
+                pass
+            assert test_state == state
 
         state.possibilities_for_n[n] = copy.deepcopy(state.all_factorizations)
-        state.start_for_n[n] = copy.copy(state.start)
-        state.end_for_n[n] = copy.copy(state.end)
-
-        new = []
-        # The array containing all the new values we generate.
-
-        s = state.start[m]
-        e = state.end[m]
-        #e = -1
-
-        state.end[m] = 0 # FixMe: What is this for?
-        # Reset end so it can be set properly each iteration
-        if e == -1 or e == 0: #here
-            e = len(state.all_factorizations)
-
-
-        logger.debug("  possibility generation: start: %d end: %d"%(s,e))
-
-
-        logger.debug("  primes_starting_cache used: " + str(state.primes_starting_cache))
-        new_primes_starting_cache = {}
-        count = 0
 
         new = generate_possibilities_via_all_factorizations(n, state.all_factorizations)
-        new = [x for x in new if x not in state.eliminate[n-2]]
 
-        logger.debug("  # of options:"+str(count))
-        new_new = []
-        #pdb.set_trace()
-        logger.debug("  Initial possibilities: %s"%(str(new)))
-        for possibility in new:
-            primes_finished = set()
-            found_all = True
-            for i in range(0, len(possibility)):
-                # Go through all factorizations before 'potential' and ensure that no
-                # factorization * p is lower than potential * p but doesn't exist.
-                prime = possibility[i]
-                if prime in primes_finished:
-                    continue
-                primes_finished.add(prime)
-                other = possibility[:i] + possibility[i + 1:]
-                if not other:
-                    break
-
-                found, idx = index_recursive(state.all_factorizations, other)
-                if not found:
-                    found_all = False
-                    break
-
-                for i in range(0, idx):
-                   for y in state.all_factorizations[i]:
-                       x = sorted([prime] + y)
-                       _, idx__ = index_recursive(state.all_factorizations, y, last=True)
-                       found, _ = index_recursive(state.all_factorizations, x, last=True)
-                       if idx__ < idx and not found:
-                          found_all = False
-                          break
-                   if not found_all:
-                        break
-                if not found_all:
-                    break
-
-            if found_all:
-                new_new += [possibility]
-        new = new_new
-
-        new_new = []
-        for possibility in new:
-            found_lt = False
-            for f in state.all_factorizations.finished:
-                if state.all_factorizations.ord(possibility, f) == -1:
-                    found_lt = True
-            if not found_lt:
-                new_new += [possibility]
-        new = new_new
-
-
-        logger.debug("  After filter1: %s"%(str(new)))
+        new = [p for p in new if not IsEliminated(state, p)]
+        new = [p for p in new if not SkipsLowerPossibility(state, p)]
+        new = [p for p in new if not IsLowerThanFinished(state, p)]
+        new = [p for p in new if not IsLockedElsewhere(state, p)]
 
         new = filter(new, state.all_factorizations)
-        logger.debug("  After filter2: %s"%(str(new)))
 
-        # Remove all locked
-        new_new = []
-        lowest = n-2
-        for possibility in new:
-            if tuple(possibility) in state.locked and state.locked[tuple(possibility)] != n:
-                continue
-            new_new += [possibility]
-        new = new_new
-
-        if not factorize(n) in new or \
-            (n == 92 and [2, 2, 2, 2, 2, 3] in new):
+        if not factorize(n) in new:
             print(1, "[[1]]")
             for i in range(0, len(state.all_factorizations)):
                 print(i + 2, state.all_factorizations[i])
             print(new)
             pdb.set_trace()
             assert False
-
         assert factorize(n) in new
+
         state.all_factorizations.all_factorizations += [sorted(new)]
         state.all_factorizations.update_reverse_idx()
 
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = state.all_factorizations.update_outstanding_and_finished(new)
-        #if n == 60: pdb.set_trace()
-        lowest = min(lowest, eliminate_based_on_gt(n, state.all_factorizations, new_finished))
-        logger.debug("  new_finished: %s"%str(new_finished))
+        lowest = eliminate_based_on_gt(n, state.all_factorizations, new_finished)
 
         if len(state.all_factorizations[-1]) == 1:
             state.locked[tuple(state.all_factorizations[-1][0])] = n
@@ -788,8 +695,6 @@ def generate_factorization_possibilities(max_n, state):
             lt_cache = state.all_factorizations.lt_cache
             state.all_factorizations = state.possibilities_for_n[state.n]
             state.all_factorizations.lt_cache = lt_cache
-            state.start = state.start_for_n[n]
-            state.end = state.end_for_n[n]
             continue
 
         if new_finished:
@@ -814,9 +719,6 @@ def generate_factorization_possibilities(max_n, state):
 
                 state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
                 state.all_factorizations = state.possibilities_for_n[state.n]
-                state.start = state.start_for_n[n]
-                state.end = state.end_for_n[n]
-
                 continue
 
         # End of the loop; update n
