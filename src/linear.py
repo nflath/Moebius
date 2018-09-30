@@ -13,7 +13,7 @@ from util import *
 from filters import *
 
 ENABLE_Z1 = True
-ENABLE_TESTS=True
+ENABLE_TESTS=False
 # FixMe: Factorizations should always be represented as a tuple.
 
 # Global logger
@@ -181,54 +181,6 @@ def ord(t, o, factorizations):
     # Neither are found; return unknown
     return 99
 
-def ord_(t, o, factorizations):
-    """Returns whether this < other for a specific factorization possibility.
-
-    Check each permutation and 2-way split of this and other to try and
-    find one where both parts of this are less than the parts of
-    other.
-
-    Returns -1 if t < o, 0 if t == o, 1 if t > o.
-    """
-    if not t and not o or t == o:
-        return 0
-    if not t:
-        return -1
-    if not o:
-        return 1
-
-    t_index = None
-    o_index = None
-
-    try:
-        t_index = factorizations.index(t)
-    except:
-        pass
-
-    try:
-        o_index = factorizations.index(o)
-    except:
-        pass
-
-    t_found = t_index is not None
-    o_found = o_index is not None
-
-    if t_found and not o_found:
-        # If t is in the list and o is not, t < o
-        return -1
-    if o_found and not t_found:
-        # If o is in the list and t is not, t < o
-        return 1
-    if t_found and t_index < o_index:
-        # If both are found and t is earlier than o, t < o
-        return -1
-    if o_found and o_index < t_index:
-        # If both are found and t is later than o, t > o
-        return 1
-
-    # Neither are found; return unknown
-    return 99
-
 def should_stop_search(n, possibilities, all_factorizations):
     # We should stop the search if it's not possible for all of the possibilities
     # to be in all_factorizations at the same time.
@@ -322,31 +274,6 @@ def generate_possibilities_via_all_factorizations(n, all_factorizations):
        results.add(tuple([n]))
 
    return [list(x) for x in results]
-
-def prune_elements_lt(n, factorizations, factorization, all_factorizations):
-    """Remove all elements in factorizations that are less than another element in factorizations
-    """
-    keep = []
-    for x in range(0, len(factorizations)):
-
-        if len(factorizations) == 1:
-            keep += [factorizations[x]]
-            continue
-
-        x_greater_than_all = True
-
-        for y in range(0, len(factorizations)):
-            if x == y: continue
-            if all_factorizations.ord_absolute(factorizations[x],
-                            factorizations[y]) != 1:
-                x_greater_than_all = False
-                break
-        if not x_greater_than_all:
-            keep += [factorizations[x]]
-        else:
-            #if moebius(n) == 0: pdb.set_trace()
-            pass
-    return keep
 
 def ranges_for_z_calculations(n, all_factorizations, it_set):
     """Calculates the range in all_factorization that each factorization is concerned with.
@@ -691,7 +618,6 @@ def generate_factorization_possibilities(max_n, state):
             #pdb.set_trace()
             state.n = lowest+2
             state.i += 1
-            state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
             lt_cache = state.all_factorizations.lt_cache
             state.all_factorizations = state.possibilities_for_n[state.n]
             state.all_factorizations.lt_cache = lt_cache
@@ -705,20 +631,18 @@ def generate_factorization_possibilities(max_n, state):
                 # all_factorizations and reset to continue calculations from
                 # the lowest point we changed
 
-                min_ = None
+                min_ = n-2
                 for x in new_eliminate:
                     if x[1] in state.all_factorizations[x[0]]:
-                        state.all_factorizations[x[0]].remove(x[1])
-                        if not min_:
-                            min_ = x[0]
                         min_ = min(min_,x[0])
                         if [x[1]] not in state.eliminate[x[0]]:
                             state.eliminate[x[0]] += [x[1]]
                 state.n = min_+2
                 state.i += 1
 
-                state.primes_starting_cache = {-1: {}, 0 : {}, 1: {}}
+                glt_cache = state.all_factorizations.lt_cache
                 state.all_factorizations = state.possibilities_for_n[state.n]
+                state.all_factorizations.lt_cache = lt_cache
                 continue
 
         # End of the loop; update n
