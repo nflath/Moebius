@@ -8,19 +8,16 @@ import sys
 import itertools
 import logging
 from functools import reduce
-from moebiusutil import *
 from util import *
 from filters import *
+from eliminate_z_analysis import all_eliminations
+from eliminate_gt import eliminate_based_on_gt
 
 ENABLE_TESTS = True
 # FixMe: Factorizations should always be represented as a tuple.
 
-# Global logger
-logger = None
-
 def setupLogger():
     """Set up the global logger to be used by this module."""
-    global logger
     logger = logging.getLogger('Moebius')
     logger.setLevel(logging.DEBUG)
     fh = logging.FileHandler('log.log')
@@ -32,150 +29,7 @@ def setupLogger():
     ch.setFormatter(formatter)
     logger.addHandler(fh)
     logger.addHandler(ch)
-
-def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
-    """Calculates Z(f).
-
-    For each prime 'p', counts the number of factorizations 'a' where
-    p*p*a <= f .  Returns the total number of cases this is true for."""
-
-    count = 0
-    max_idx = 0
-    in_ = set()
-    for p in primes:
-        val = ord([p,p], f, factorizations)
-        if val == 99:
-            break
-        if val  <= 0:
-            in_.add((p,p))
-        else:
-            break
-        for x_idx in range(0,len(factorizations)):
-            x = factorizations[x_idx]
-            possibility = sorted([p,p]+x)
-            val = ord(possibility, f, factorizations)
-            if val == 99:
-                break
-            if val <= 0:
-                max_idx = max(max_idx, x_idx)
-                in_.add(tuple(possibility))
-            else:
-                break
-
-    pos = set()
-    in_y = set()
-    in_both = set()
-    for idx in all_factorizations.reverse_idx[tuple(f)]:
-        if idx == y_idx:
-            if tuple(f) not in in_ and len(set(f)) != len(f):
-                pos.add(idx)
-                in_y.add(tuple(f))
-            break
-        for z in all_factorizations[idx]:
-            if len(set(z)) != len(z):
-                pos.add(idx)
-                if tuple(z) not in in_:
-                    in_y.add(tuple(z))
-                else:
-                    in_both.add(tuple(z))
-
-
-    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
-      len(in_) + min(len(pos),len(in_y))
-
-def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx):
-    """Calculates Z1(f).
-
-    For each prime 'p', counts the number of factorizations 'a' where
-    p*a <= f and moebius(p*a)==1.  Returns the total number of cases
-    this is true for.
-    """
-    in_ = set()
-    for p in primes:
-        for x in factorizations:
-            if p in x:
-                continue
-            if len(set(x)) != len(x):
-                continue
-            if (len(x) % 2) == 0:
-                continue
-
-            possibility = sorted([p]+x)
-            val = ord(possibility, f, factorizations)
-            if val == 99:
-                break
-            elif val <= 0:
-                in_.add(tuple(possibility))
-            else:
-                break
-
-    pos = set()
-    in_y = set()
-    in_both = set()
-    for idx in range(all_factorizations.reverse_idx[tuple(f)][0],len(all_factorizations)):
-        if idx == y_idx:
-            if tuple(f) not in in_ and len(set(f)) == len(f) and len(f) % 2 == 0:
-                pos.add(idx)
-                in_y.add(tuple(f))
-            break
-        for z in all_factorizations[idx]:
-            if len(set(z)) == len(z) and len(z) % 2 == 0:
-                pos.add(idx)
-                if tuple(z) not in in_:
-                    in_y.add(tuple(z))
-                else:
-                    in_both.add(tuple(z))
-
-
-    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
-      len(in_) + min(len(pos),len(in_y))
-
-def ord(t, o, factorizations):
-    """Returns whether this < other for a specific factorization possibility.
-
-    Check each permutation and 2-way split of this and other to try and
-    find one where both parts of this are less than the parts of
-    other.
-
-    Returns -1 if t < o, 0 if t == o, 1 if t > o.
-    """
-    t, o = simplify(t, o)
-
-    if not t and not o or t == o:
-        return 0
-    if not t:
-        return -1
-    if not o:
-        return 1
-
-    t_index = None
-    o_index = None
-
-
-    if t in factorizations:
-        t_index = factorizations.index(t)
-
-    if o in factorizations:
-        o_index = factorizations.index(o)
-
-    t_found = t_index is not None
-    o_found = o_index is not None
-
-    if t_found and not o_found:
-        # If t is in the list and o is not, t < o
-        return -1
-    if o_found and not t_found:
-        # If o is in the list and t is not, t < o
-        return 1
-    if t_found and t_index < o_index:
-        # If both are found and t is earlier than o, t < o
-        return -1
-    if o_found and o_index < t_index:
-        # If both are found and t is later than o, t > o
-        return 1
-
-    # Neither are found; return unknown
-    return 99
+    return logger
 
 def should_stop_search(n, possibilities, all_factorizations):
     # We should stop the search if it's not possible for all of the possibilities
@@ -271,284 +125,6 @@ def generate_possibilities_via_all_factorizations(n, all_factorizations):
 
    return [list(x) for x in results]
 
-def ranges_for_z_calculations(n, all_factorizations, it_set):
-    """Calculates the range in all_factorization that each factorization is concerned with.
-
-    This is an optimization, so we don't have to run through every full
-    factorization for every Z.  The max_idx for a factorization will be
-    the maximum index in all_factorization we need to show that [p*p]*a
-    > factorization for all p.  Th min_idx is the lowest index that we
-    are unsure whether p*p*a > factorization.  We are only really
-    interested in cases where we can always calculate Z, but will
-    sometimes get different results.
-    """
-
-    possible_primes = []
-    for x in all_factorizations:
-        for y in x:
-            if len(y) == 1:
-                possible_primes += y
-
-    # Don't analyze for primes that are potentially not prime.
-    new_it_set = set()
-    for y in it_set:
-        valid = True
-        for x in y:
-            assert len(all_factorizations.reverse_idx[(x,)])==1
-            if len(all_factorizations[all_factorizations.reverse_idx[(x,)][0]]) > 1:
-                valid = False
-        if valid:
-            new_it_set.add(tuple(y))
-
-    mask = {}
-
-    for y in new_it_set:
-        d = set()
-        d.add(y)
-
-        mask[y] = [False] * len(all_factorizations)
-
-        for p in possible_primes:
-            # For each prime, try to find some index x_idx s.t
-            # [p,p]*all_factorizations[x_idx] > y.  Keep track of the maximum
-            # of these.
-            found_upper_bound = False
-
-            for x_idx in range(0, len(all_factorizations)):
-
-                for z in all_factorizations[x_idx]:
-                    t, o = simplify(z, y)
-                    if not t:
-                        mask[y][x_idx] = True
-                    tup = (sorted([p,p] + z), sorted([p]+z))
-                    for v in tup:
-
-                        val = all_factorizations.ord_absolute(v,y)
-
-                        if tuple(v) == y:
-                            #pdb.set_trace()
-                            if x_idx == 53: pdb.set_trace()
-                            mask[y][x_idx] = True
-                        if tuple(v) not in all_factorizations.outstanding and \
-                          tuple(v) not in all_factorizations.finished:
-                            continue
-
-                        if val == 99:
-                            #if x_idx == 53: pdb.set_trace()
-                            t, o = simplify(v, y)
-
-                            #for idx in all_factorizations.reverse_idx[tuple(v)]:
-                                #if idx == 53: pdb.set_trace()
-                                #mask[y][idx] = True
-
-                            if tuple(o) != y:
-                                for idx in all_factorizations.reverse_idx[tuple(t)]:
-                                    #if idx == 53: pdb.set_trace()
-                                    mask[y][idx] = True
-                                for idx in all_factorizations.reverse_idx[tuple(o)]:
-                                    #if idx == 53: pdb.set_trace()
-                                    mask[y][idx] = True
-        # End for x_idx in range(0, len(all_factorizations)):
-        #pdb.set_trace()
-        for x in range(0, len(mask[y])):
-            if mask[y][x]:
-                    for z in all_factorizations[x]:
-                        for zp in z:
-                            if len(all_factorizations.reverse_idx[(zp,)]) > 1:
-                                mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
-
-        for x in range(0,2):
-            present = set()
-            for x_idx in range(0, len(all_factorizations)):
-                if mask[y][x_idx] == True:
-                    for z in all_factorizations[x_idx]:
-                        present.add(tuple(z))
-
-            for x_idx in range(0, len(all_factorizations)):
-                if mask[y][x_idx] == False:
-                    for z in all_factorizations[x_idx]:
-                        if tuple(z) in present:
-                            mask[y][x_idx] = True
-
-        present = set()
-        for y_idx in all_factorizations.reverse_idx[y]:
-            mask[y][y_idx] = False
-            for z in all_factorizations[y_idx]:
-                present.add(tuple(z))
-
-        for x_idx in range(0,len(all_factorizations)):
-            for z in all_factorizations[x_idx]:
-                if tuple(z) in present:
-                    mask[y][x_idx] = False;
-    return mask
-
-def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask):
-    eliminate = []
-    for y in mask:
-        if len(y) == 1: continue
-        logger.debug("  About to analyze masked Z for y="+str(y)+" "+str(mask[y]))
-
-        cnt = 0
-        for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
-            cnt += 1
-        logger.debug("  Count = "+str(cnt))
-
-        e = copy.deepcopy(all_factorizations.all_factorizations)
-        for idx in range(0, len(all_factorizations)):
-            if not mask[y][idx]:
-                e[idx] = []
-
-
-        for y_idx in all_factorizations.reverse_idx[tuple(y)]:
-            #if n == 28 and y == (3,3,3): pdb.set_trace()
-            #if n == 46 and y == (2,3,7): pdb.set_trace()
-            #if n == 60: pdb.set_trace()
-            for x in generate_all_possible_lists_for_mask(all_factorizations[:y_idx+1], mask[y][:y_idx+1]):
-                if n == 56 and y == (2,2,2,7) and y_idx == 54:
-                    correct = True
-                    for x_idx in range(0, len(x)):
-                         if mask[y][x_idx] and x[x_idx] != factorize(x_idx+2):
-                             correct = False
-                    #if correct: pdb.set_trace()
-
-                y_start_idx = all_factorizations.reverse_idx[tuple(y)][0]
-                x[y_idx] = list(y)
-                primes = [x[0] for x in x if len(x) == 1]
-
-                moebius_of_y = 0 # FixMe: move this out into a function
-                if len(set(y)) == len(y):
-                    moebius_of_y = int(math.pow(-1,len(y)))
-
-                if list(y) not in x:
-                    continue
-
-                #if n == 32 and y == (2,2,2,2,2)  and x[12] == [2,7]: pdb.set_trace()
-                possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
-
-                z_is_possible = ZIsPossible(possible_z_min,possible_z_max,moebius_of_y)
-
-                possible = True
-                if (z_is_possible < (y_idx+2)):
-                    continue
-                if (not in_range(Z(y_idx+2),possible_z_min,possible_z_max)):
-                    continue
-
-                possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
-                z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
-                if (z1_is_possible < (y_idx+2)):
-                    continue
-                if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
-                    continue
-
-
-                if possible:
-                    for i in range(0, len(e)):
-
-                        if i < len(x):
-
-                            if x[i] in e[i]:
-                                e[i].remove(x[i])
-                        else:
-                            e[i] = []
-
-        for idx in range(0,len(e)):
-           for z in e[idx]:
-               logger.info("  Mask Eliminating [n=%d,%s] based on: %s " % (idx+2,str(z),str(y)))
-               eliminate += [[idx, z]]
-               if z == factorize(idx+2):
-                   pdb.set_trace()
-                   assert False
-        logger.debug("  Done analyzing masked Z for y="+str(y))
-
-    return eliminate
-
-
-def all_eliminations(n, all_factorizations, new_finished):
-    """ Returns factorizations for positions we can show are impossible. """
-    global logger
-
-    mask = ranges_for_z_calculations(n, all_factorizations, new_finished)
-    e_ = analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
-
-    return e_, []
-
-def filter(new, all_factorizations):
-    # Filter out too-high values(more than enough space for all lower values)
-    new_new = []
-    for f in new:
-        lt = []
-        gt = []
-        equiv = []
-        p, i = all_factorizations.shared(f)
-        if len(p) == 0:
-            for x in new:
-                p_, i_ = all_factorizations.shared(x)
-                p = p.union(p_)
-                i = i.union(i_)
-                #pdb.set_trace()
-                i.add(tuple(x))
-
-        for n in i:
-            r = all_factorizations.ord_absolute(n, f)
-            if r == -1:
-                lt += [n]
-            elif r == 1:
-                gt += [n]
-            else:
-                equiv += [n]
-        if len(p)+1 > (len(lt)):
-            # It is possible for a lower value to be present
-            new_new += [f]
-
-    return new_new
-
-def eliminate_based_on_gt(n, all_factorizations, new_finished):
-    lowest = n - 2
-    for f in new_finished:
-        for x in range(0, len(all_factorizations)):
-            for z in all_factorizations[x]:
-                t, o = simplify(f, z)
-                if len(t) == 1 and len(all_factorizations[all_factorizations.reverse_idx[tuple(t)][0]]) > 1:
-                    continue
-                if len(o) == 1 and len(all_factorizations[all_factorizations.reverse_idx[tuple(o)][0]]) > 1:
-                    continue
-
-                if (all_factorizations.ord(list(f), list(z)) == 1 and all_factorizations.ord(t,o) == 99):
-                    all_factorizations.register_lt(o,t)
-                    logger.info("   %s < %s based on %s",o,t,f)
-                    lowest = min(lowest, all_factorizations.reverse_idx[tuple(o)][0])
-                if all_factorizations.ord(list(z), list(f)) == 1 and all_factorizations.ord(t,o) == 99:
-                    all_factorizations.register_lt(t,o)
-                    logger.info("   %s < %s based on %s",t,o,f)
-                    lowest = min(lowest, all_factorizations.reverse_idx[tuple(t)][0])
-                if (all_factorizations.ord(list(t), list(o)) == 1 and all_factorizations.ord(list(f),list(z)) == 99):
-                    all_factorizations.register_lt(z,f)
-                    logger.info("   %s < %s based on %s",z,f,f)
-                    lowest = min(lowest, all_factorizations.reverse_idx[tuple(z)][0])
-                if all_factorizations.ord(list(o), list(t)) == 1 and all_factorizations.ord(list(z),list(f)) == 99:
-                    all_factorizations.register_lt(f,z)
-                    logger.info("   %s < %s based on %s",f,z,f)
-                    lowest = min(lowest, all_factorizations.reverse_idx[tuple(f)][0])
-
-    for f in new_finished:
-        for x in range(0, len(all_factorizations)):
-            if len(all_factorizations[x]) > 1:
-                for z in all_factorizations[x]:
-                    t, o = simplify(f, z)
-                    if tuple(z) != f and tuple(t) != f and not o:
-                        for z2 in all_factorizations[x]:
-                            if all_factorizations.ord(list(f), sorted(z2+t)) == 1 and \
-                                all_factorizations.ord(z, z2) == 99 and len(z2) != 1 and len(z) != 1:
-                                all_factorizations.register_lt(z2, z)
-                                logger.info("   %s < %s based on %s",z2,z,f)
-                                lowest = min(lowest, all_factorizations.reverse_idx[tuple(z2)][0])
-                            if all_factorizations.ord(list(f), sorted(z2+t)) == -1 and \
-                                all_factorizations.ord(z, z2) == 99 and len(z2) != 1 and len(z) != 1:
-                                all_factorizations.register_lt(z, z2)
-                                logger.info("   %s < %s based on %s",z,z2,f)
-                                lowest = min(lowest, all_factorizations.reverse_idx[tuple(z)][0])
-    return lowest
-
 def VerifySameAsTestdataIfCheckEnabled(state):
     if not ENABLE_TESTS:
         return
@@ -561,15 +137,25 @@ def VerifySameAsTestdataIfCheckEnabled(state):
     except FileNotFoundError as e:
         pass
 
+def VerifyRealFactorizationGenerated(state, new):
+    if factorize(state.n) in new:
+        return
+
+    print(1, "[[1]]")
+    for i in range(0, len(state.all_factorizations)):
+        print(i + 2, state.all_factorizations[i])
+    print(new)
+    pdb.set_trace()
+    assert factorize(n) in new # Will always fail
 
 def generate_factorization_possibilities(max_n, state):
     """ Generates the list of possible factorizations from start_n to max_n. """
     global logger, calls, ord_cache
 
-    logger.info("Program begin")
+    state.logger.info("Program begin")
 
     while state.n <= max_n:
-        logger.info("Processing n=%d i=%d moebius=%d"%(state.n,state.i,moebius(state.n)))
+        state.logger.info("Processing n=%d i=%d moebius=%d"%(state.n,state.i,moebius(state.n)))
         n = state.n
 
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
@@ -584,17 +170,10 @@ def generate_factorization_possibilities(max_n, state):
         new = [p for p in new if not SkipsLowerPossibility(state, p)]
         new = [p for p in new if not IsLowerThanFinished(state, p)]
         new = [p for p in new if not IsLockedElsewhere(state, p)]
+        new = [p for p in new if not IsTooHigh(state, new, p)]
+        #new = filter(new, state.all_factorizations)
 
-        new = filter(new, state.all_factorizations)
-
-        if not factorize(n) in new:
-            print(1, "[[1]]")
-            for i in range(0, len(state.all_factorizations)):
-                print(i + 2, state.all_factorizations[i])
-            print(new)
-            pdb.set_trace()
-            assert False
-        assert factorize(n) in new
+        VerifyRealFactorizationGenerated(state, new)
 
         state.all_factorizations.all_factorizations += [sorted(new)]
         state.all_factorizations.update_reverse_idx()
@@ -602,7 +181,7 @@ def generate_factorization_possibilities(max_n, state):
         # Update the outstanding and finished sets.  new_finished is the
         # outstanding factorizations that we finished at this n.
         new_finished = state.all_factorizations.update_outstanding_and_finished(new)
-        lowest = eliminate_based_on_gt(n, state.all_factorizations, new_finished)
+        lowest = eliminate_based_on_gt(state, new_finished)
 
         if len(state.all_factorizations[-1]) == 1:
             state.locked[tuple(state.all_factorizations[-1][0])] = n
@@ -621,7 +200,7 @@ def generate_factorization_possibilities(max_n, state):
             continue
 
         if new_finished:
-            new_eliminate, new_z_calculated = all_eliminations(n, state.all_factorizations, new_finished)
+            new_eliminate, new_z_calculated = all_eliminations(state, new_finished)
 
             if new_eliminate:
                 # For all of our new elimination candidates, update
@@ -649,12 +228,13 @@ def generate_factorization_possibilities(max_n, state):
 
 if __name__ == "__main__":
     def main():
-        setupLogger()
+        logger = setupLogger()
         state = State()
         if len(sys.argv) > 2:
             import pickle
             state = pickle.load(open(sys.argv[2],"rb"))
             state.n = int(state.n)
+        state.logger = logger
         f = generate_factorization_possibilities(int(sys.argv[1]), state)
         print(1, "[[1]]")
         for n in range(0, len(f)):

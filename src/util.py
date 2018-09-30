@@ -1,6 +1,7 @@
 import pdb
 import copy
 import collections
+import math
 
 class memoized(object):
    '''Decorator. Caches a function's return value each time it is called.
@@ -39,7 +40,24 @@ def factorize(n):
     assert n == 1
     return factors
 
+@memoized
+def moebius(n):
+    """Returns the moebius value of n
 
+    This function is described as:
+        moebius(n) == (-1)^m if the factorization of n is a product of m distinct primes
+        moebius(n) == 0 otherswise.
+    """
+    def moebius_factorization(f):
+        if len(set(f)) != len(f):
+            return 0
+        return int(math.pow(-1, len(f)))
+
+    assert n > 0
+    if n == 1:
+        return 1
+
+    return moebius_factorization(factorize(n))
 
 def tupletized(l):
     """ Return a version of the list of lists that is entirely in tuples."""

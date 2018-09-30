@@ -64,3 +64,29 @@ def SkipsLowerPossibility(state, possible_new_value):
     if found_all:
         return False
     return True
+
+def IsTooHigh(state, new, possible_new_value):
+   # Filter out too-high values(more than enough space for all lower values)
+   lt = []
+   gt = []
+   equiv = []
+   p, i = state.all_factorizations.shared(possible_new_value)
+   if len(p) == 0:
+       for x in new:
+           p_, i_ = state.all_factorizations.shared(x)
+           p = p.union(p_)
+           i = i.union(i_)
+           i.add(tuple(x))
+
+   for n in i:
+       r = state.all_factorizations.ord_absolute(n, possible_new_value)
+       if r == -1:
+           lt += [n]
+       elif r == 1:
+           gt += [n]
+       else:
+           equiv += [n]
+   if len(p)+1 > (len(lt)):
+       # It is possible for a lower value to be present
+       return False
+   return True
