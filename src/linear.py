@@ -12,8 +12,7 @@ from moebiusutil import *
 from util import *
 from filters import *
 
-ENABLE_Z1 = True
-ENABLE_TESTS=False
+ENABLE_TESTS = True
 # FixMe: Factorizations should always be represented as a tuple.
 
 # Global logger
@@ -152,15 +151,12 @@ def ord(t, o, factorizations):
     t_index = None
     o_index = None
 
-    try:
-        t_index = factorizations.index(t)
-    except:
-        pass
 
-    try:
+    if t in factorizations:
+        t_index = factorizations.index(t)
+
+    if o in factorizations:
         o_index = factorizations.index(o)
-    except:
-        pass
 
     t_found = t_index is not None
     o_found = o_index is not None
@@ -323,10 +319,8 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                 for z in all_factorizations[x_idx]:
                     t, o = simplify(z, y)
                     if not t:
-                        #if z == [2,3,5]: pdb.set_trace()
                         mask[y][x_idx] = True
-                    tup = (sorted([p,p] + z),)
-                    if ENABLE_Z1 or True : tup = (sorted([p,p] + z), sorted([p]+z))
+                    tup = (sorted([p,p] + z), sorted([p]+z))
                     for v in tup:
 
                         val = all_factorizations.ord_absolute(v,y)
@@ -439,13 +433,12 @@ def analyze_z_for_factorizations_mask(n, all_factorizations, new_finished, mask)
                 if (not in_range(Z(y_idx+2),possible_z_min,possible_z_max)):
                     continue
 
-                if ENABLE_Z1:
-                    possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
-                    z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
-                    if (z1_is_possible < (y_idx+2)):
-                        continue
-                    if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
-                        continue
+                possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
+                z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
+                if (z1_is_possible < (y_idx+2)):
+                    continue
+                if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
+                    continue
 
 
                 if possible:
@@ -564,10 +557,9 @@ def VerifySameAsTestdataIfCheckEnabled(state):
         test_state.n = int(test_state.n)
         if test_state != state:
             state.compare_and_print(test_state)
-            assert test_state == state
-    except:
-        raise
-       #pass
+        assert test_state == state
+    except FileNotFoundError as e:
+        pass
 
 
 def generate_factorization_possibilities(max_n, state):
@@ -583,16 +575,6 @@ def generate_factorization_possibilities(max_n, state):
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
 
         VerifySameAsTestdataIfCheckEnabled(state)
-        if ENABLE_TESTS:
-            try:
-                test_state = pickle.load(open("testdata/n=%di=%d"%(state.n, state.i), "rb"))
-                test_state.n = int(test_state.n)
-                if test_state != state:
-                    state.compare_and_print(test_state)
-                    assert test_state == state
-            except:
-                pass
-            assert test_state == state
 
         state.possibilities_for_n[n] = copy.deepcopy(state.all_factorizations)
 

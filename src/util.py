@@ -89,11 +89,7 @@ def generate_all_possible_lists(lst, start_idx=0, end_idx=0, check_primality=Tru
                 yield y
 
         if len(retn[idx]) == 1:
-            try:
-                primes.remove(tuple(retn[idx]))
-            except:
-                pdb.set_trace()
-
+            primes.remove(tuple(retn[idx]))
 
 def generate_all_possible_lists_for_mask(lst, mask, idx=0, retn=[]):
     """ Yields each possible list, where each index in lst is a list of possibilities.
@@ -141,11 +137,8 @@ def simplify(this, other):
     to = tuple(other)
 
     global scache
-    try:
-        if (ts, to) in scache:
-            return scache[(ts, to)]
-    except:
-        pdb.set_trace()
+    if (ts, to) in scache:
+        return scache[(ts, to)]
 
     t_i = 0
     o_i = 0
