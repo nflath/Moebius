@@ -236,7 +236,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
 
                         if tuple(v) == y:
                             #pdb.set_trace()
-                            if x_idx == 53: pdb.set_trace()
                             mask[y][x_idx] = True
                         if tuple(v) not in all_factorizations.outstanding and \
                           tuple(v) not in all_factorizations.finished:

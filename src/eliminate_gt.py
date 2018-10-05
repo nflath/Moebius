@@ -25,15 +25,19 @@ def EliminateBasedOnGt(state, new_finished):
                 # is known but not f < z, or vice versa, register the other one
                 # as known.
                 if (state.all_factorizations.ord(list(f), list(z)) == 1 and state.all_factorizations.ord(t,o) == 99):
+                    state.logger.info(" %s < %s " % (str(o),str(t)))
                     state.all_factorizations.register_lt(o,t)
                     lowest = min(lowest, state.all_factorizations.reverse_idx[tuple(o)][0])
                 if state.all_factorizations.ord(list(z), list(f)) == 1 and state.all_factorizations.ord(t,o) == 99:
+                    state.logger.info(" %s < %s " % (str(t),str(o)))
                     state.all_factorizations.register_lt(t,o)
                     lowest = min(lowest, state.all_factorizations.reverse_idx[tuple(t)][0])
                 if (state.all_factorizations.ord(list(t), list(o)) == 1 and state.all_factorizations.ord(list(f),list(z)) == 99):
+                    state.logger.info(" %s < %s " % (str(z),str(f)))
                     state.all_factorizations.register_lt(z,f)
                     lowest = min(lowest, state.all_factorizations.reverse_idx[tuple(z)][0])
                 if state.all_factorizations.ord(list(o), list(t)) == 1 and state.all_factorizations.ord(list(z),list(f)) == 99:
+                    state.logger.info(" %s < %s " % (str(f),str(z)))
                     state.all_factorizations.register_lt(f,z)
                     lowest = min(lowest, state.all_factorizations.reverse_idx[tuple(f)][0])
 
@@ -49,10 +53,12 @@ def EliminateBasedOnGt(state, new_finished):
                             # Check if there we know z * t < z2 * t for some t or vice versa.
                             if state.all_factorizations.ord(list(f), sorted(z2+t)) == 1 and \
                                 state.all_factorizations.ord(z, z2) == 99 and len(z2) != 1 and len(z) != 1:
+                                state.logger.info(" %s < %s " % (str(z2),str(z)))
                                 state.all_factorizations.register_lt(z2, z)
                                 lowest = min(lowest, state.all_factorizations.reverse_idx[tuple(z2)][0])
                             if state.all_factorizations.ord(list(f), sorted(z2+t)) == -1 and \
                                 state.all_factorizations.ord(z, z2) == 99 and len(z2) != 1 and len(z) != 1:
+                                state.logger.info(" %s < %s " % (str(z),str(z2)))
                                 state.all_factorizations.register_lt(z, z2)
                                 lowest = min(lowest, state.all_factorizations.reverse_idx[tuple(z)][0])
     return lowest

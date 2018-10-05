@@ -8,7 +8,7 @@
 def IsLowerThanFinished(state, possible_factorization):
     """Is possible_factorization lower than a finished factorization."""
     for f in state.all_factorizations.finished:
-        if state.all_factorizations.ord(possible_factorization, f) == -1:
+        if state.all_factorizations.ord_absolute(possible_factorization, f) == -1:
             return True
     return False
 
