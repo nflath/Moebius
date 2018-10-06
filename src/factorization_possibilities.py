@@ -98,6 +98,8 @@ class FactorizationPossibilities(object):
                     break
             if all_lower:
                 new_finished.add(o)
+            else:
+                new_outstanding.add(o)
 
 
         # If an item in outstanding is less than any item in finished, the

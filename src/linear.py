@@ -21,6 +21,7 @@ ENABLE_TESTS = False
 # FixMe: Use sets where appropriate
 # FixMe: Have a real command-line parser
 
+
 def CreateLogger():
     """Set up the global logger to be used by this module."""
     logger = logging.getLogger('Moebius')
@@ -68,7 +69,7 @@ def generate_factorization_possibilities(max_n, state):
 
         # Save the current state in order to be able to reload quickly
         # FixMe: Make optional
-        pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
+        pickle.dump(state, open("/Users/nflath/moebius/saves/n=%di=%d"%(state.n, state.i),"wb"))
 
         # If enabled, ensure we generated the same data as last run
         VerifySameAsTestdataIfCheckEnabled(state)
