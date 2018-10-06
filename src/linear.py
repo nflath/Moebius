@@ -13,8 +13,10 @@ from filters import *
 from eliminate_z_analysis import all_eliminations
 from eliminate_gt import EliminateBasedOnGt
 from generate_new_factorizations import GenerateNewFactorizations
+from factorization_possibilities import FactorizationPossibilities
+from state import State
 
-ENABLE_TESTS = True
+ENABLE_TESTS = False
 # FixMe: Factorizations should always be represented as a tuple.
 
 def CreateLogger():
@@ -66,7 +68,7 @@ def generate_factorization_possibilities(max_n, state):
 
         VerifySameAsTestdataIfCheckEnabled(state)
 
-        state.possibilities_for_n[state.n] = copy.deepcopy(state.all_factorizations)
+        state.all_factorizations_for_n[state.n] = copy.deepcopy(state.all_factorizations)
 
         new = GenerateNewFactorizations(state.n, state.all_factorizations)
 
@@ -83,9 +85,10 @@ def generate_factorization_possibilities(max_n, state):
 
         VerifyRealFactorizationGenerated(state, new)
 
-        state.all_factorizations.all_factorizations += [sorted(new)]
-        state.all_factorizations.update_reverse_idx()
-        new_finished = state.all_factorizations.update_outstanding_and_finished(new)
+        new_finished = state.all_factorizations.Update(sorted(new))
+        #state.all_factorizations.all_factorizations += [sorted(new)]
+        #state.all_factorizations.update_reverse_idx()
+        #new_finished = state.all_factorizations.update_outstanding_and_finished(new)
 
         lowest = EliminateBasedOnGt(state, new_finished)
 
@@ -97,7 +100,7 @@ def generate_factorization_possibilities(max_n, state):
             state.n = lowest+2
             state.i += 1
             lt_cache = state.all_factorizations.lt_cache
-            state.all_factorizations = state.possibilities_for_n[state.n]
+            state.all_factorizations = state.all_factorizations_for_n[state.n]
             state.all_factorizations.lt_cache = lt_cache
             continue
 
@@ -119,7 +122,7 @@ def generate_factorization_possibilities(max_n, state):
                 state.i += 1
 
                 glt_cache = state.all_factorizations.lt_cache
-                state.all_factorizations = state.possibilities_for_n[state.n]
+                state.all_factorizations = state.all_factorizations_for_n[state.n]
                 state.all_factorizations.lt_cache = lt_cache
                 continue
 
