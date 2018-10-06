@@ -66,14 +66,20 @@ def generate_factorization_possibilities(max_n, state):
     while state.n <= max_n:
         state.logger.info("Processing n=%d i=%d moebius=%d"%(state.n,state.i,moebius(state.n)))
 
+        # Save the current state in order to be able to reload quickly
+        # FixMe: Make optional
         pickle.dump(state, open("saves/n=%di=%d"%(state.n, state.i),"wb"))
 
+        # If enabled, ensure we generated the same data as last run
         VerifySameAsTestdataIfCheckEnabled(state)
 
         state.all_factorizations_for_n[state.n] = copy.deepcopy(state.all_factorizations)
 
+        # Generate all the possible new factorizations n could have based on
+        # our current factorization possibilities.
         new = GenerateNewFactorizations(state.n, state.all_factorizations)
 
+        # Filter out the new factorizations we generated in various ways
         new = [p for p in new if not IsEliminated(state, p)]
         new = [p for p in new if not IsLowerThanFinished(state, p)]
         new = [p for p in new if not IsLockedElsewhere(state, p)]
@@ -85,14 +91,21 @@ def generate_factorization_possibilities(max_n, state):
             state.locked[tuple(new[0])] = state.n
             state.locked_n[state.n] = tuple(new[0])
 
+        # Ensure we didn't filter out the real factorization for n
         VerifyRealFactorizationGenerated(state, new)
 
+        # Update state with the newly-generated factorization possibilities for n
         new_finished = state.all_factorizations.Update(sorted(new))
 
+        # Analyze full factorization list in a few ways to eliminate
+        # previously-generated possibilities.
         lowest = EliminateBasedOnGt(state, new_finished)
         lowest = min(lowest, all_eliminations(state, new_finished))
 
         if lowest != state.n - 2:
+            # We eliminated some previously-generated possibilities; jump back and
+            # sstart processing from where we eliminated them.
+
             state.n = lowest+2
             state.i += 1
             lt_cache = state.all_factorizations.lt_cache
@@ -102,6 +115,7 @@ def generate_factorization_possibilities(max_n, state):
 
         # End of the loop; update n
         state.n += 1
+    # end while state.n <= max_n:
 
     return state.all_factorizations
 
