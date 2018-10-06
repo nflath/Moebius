@@ -140,7 +140,6 @@ class FactorizationPossibilities(object):
         possibilitieis for n', will return ((n,n'),(y,z,a)).
         """
 
-
         items = set()
         positions = set()
 

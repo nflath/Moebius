@@ -18,6 +18,8 @@ from state import State
 
 ENABLE_TESTS = False
 # FixMe: Factorizations should always be represented as a tuple.
+# FixMe: Use sets where appropriate
+# FixMe: Have a real command-line parser
 
 def CreateLogger():
     """Set up the global logger to be used by this module."""
@@ -86,45 +88,17 @@ def generate_factorization_possibilities(max_n, state):
         VerifyRealFactorizationGenerated(state, new)
 
         new_finished = state.all_factorizations.Update(sorted(new))
-        #state.all_factorizations.all_factorizations += [sorted(new)]
-        #state.all_factorizations.update_reverse_idx()
-        #new_finished = state.all_factorizations.update_outstanding_and_finished(new)
 
         lowest = EliminateBasedOnGt(state, new_finished)
-
-
-
+        lowest = min(lowest, all_eliminations(state, new_finished))
 
         if lowest != state.n - 2:
-            #pdb.set_trace()
             state.n = lowest+2
             state.i += 1
             lt_cache = state.all_factorizations.lt_cache
             state.all_factorizations = state.all_factorizations_for_n[state.n]
             state.all_factorizations.lt_cache = lt_cache
             continue
-
-        if new_finished:
-            new_eliminate, new_z_calculated = all_eliminations(state, new_finished)
-
-            if new_eliminate:
-                # For all of our new elimination candidates, update
-                # all_factorizations and reset to continue calculations from
-                # the lowest point we changed
-
-                min_ = state.n-2
-                for x in new_eliminate:
-                    if x[1] in state.all_factorizations[x[0]]:
-                        min_ = min(min_,x[0])
-                        if [x[1]] not in state.eliminate[x[0]]:
-                            state.eliminate[x[0]] += [x[1]]
-                state.n = min_+2
-                state.i += 1
-
-                glt_cache = state.all_factorizations.lt_cache
-                state.all_factorizations = state.all_factorizations_for_n[state.n]
-                state.all_factorizations.lt_cache = lt_cache
-                continue
 
         # End of the loop; update n
         state.n += 1

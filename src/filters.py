@@ -76,9 +76,9 @@ def SkipsLowerFactorization(state, possible_factorization):
     return False
 
 def IsTooHigh(state, new_factorizations, possible_factorization):
-    """Is new_factorization greater than too many others."""
-    # Factorizations that are transitively a possible factorization for some 'n'
-    # that new_factorizations is.
+   """Is new_factorization greater than too many others."""
+   # Factorizations that are transitively a possible factorization for some 'n'
+   # that new_factorizations is.
 
    lt = []
    gt = []

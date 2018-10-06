@@ -59,12 +59,6 @@ def moebius(n):
 
     return moebius_factorization(factorize(n))
 
-def tupletized(l):
-    """ Return a version of the list of lists that is entirely in tuples."""
-    # FixMe: convert everything to just be tuples
-
-    return tuple([tuple(x) for x in l])
-
 def generate_all_possible_lists(lst, start_idx=0, end_idx=0, check_primality=True, idx=0, primes = set(), retn=[]):
     """ Yields each possible list, where each index in lst is a list of possibilities.
 

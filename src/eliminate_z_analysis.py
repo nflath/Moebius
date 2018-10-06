@@ -290,18 +290,31 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
     return mask
 
 def analyze_z_for_factorizations_mask(state, mask):
+    """For each factorization we've generated a mask for, analyze the Z-values.
+
+    Specifically, generate each possible factorization list given the
+    mask and, for each possible position of y, see if they are valid
+    based on Z-values.  Find if there are any factorizations for n that are never valid.
+    """
+
     n = state.n
     all_factorizations = state.all_factorizations
     eliminate = []
     for y in mask:
-        if len(y) == 1: continue
+        # Ignore primes:
+        # FixMe: filter them out when generating mask
+        if len(y) == 1:
+            continue
+
         state.logger.debug("  About to analyze masked Z for y="+str(y)+" "+str(mask[y]))
 
+        # Debug information: number of lists we have to generate
         cnt = 0
         for x in generate_all_possible_lists_for_mask(all_factorizations, mask[y]):
             cnt += 1
         state.logger.debug("  Count = "+str(cnt))
 
+        # e is the possibilities we can eliminate
         e = copy.deepcopy(all_factorizations.all_factorizations)
         for idx in range(0, len(all_factorizations)):
             if not mask[y][idx]:
@@ -309,16 +322,7 @@ def analyze_z_for_factorizations_mask(state, mask):
 
 
         for y_idx in all_factorizations.reverse_idx[tuple(y)]:
-            #if n == 28 and y == (3,3,3): pdb.set_trace()
-            #if n == 46 and y == (2,3,7): pdb.set_trace()
-            #if n == 60: pdb.set_trace()
             for x in generate_all_possible_lists_for_mask(all_factorizations[:y_idx+1], mask[y][:y_idx+1]):
-                if n == 56 and y == (2,2,2,7) and y_idx == 54:
-                    correct = True
-                    for x_idx in range(0, len(x)):
-                         if mask[y][x_idx] and x[x_idx] != factorize(x_idx+2):
-                             correct = False
-                    #if correct: pdb.set_trace()
 
                 y_start_idx = all_factorizations.reverse_idx[tuple(y)][0]
                 x[y_idx] = list(y)
@@ -328,15 +332,10 @@ def analyze_z_for_factorizations_mask(state, mask):
                 if len(set(y)) == len(y):
                     moebius_of_y = int(math.pow(-1,len(y)))
 
-                if list(y) not in x:
-                    continue
-
-                #if n == 32 and y == (2,2,2,2,2)  and x[12] == [2,7]: pdb.set_trace()
                 possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
 
                 z_is_possible = ZIsPossible(possible_z_min,possible_z_max,moebius_of_y)
 
-                possible = True
                 if (z_is_possible < (y_idx+2)):
                     continue
                 if (not InRange(Z(y_idx+2),possible_z_min,possible_z_max)):
@@ -350,33 +349,42 @@ def analyze_z_for_factorizations_mask(state, mask):
                     continue
 
 
-                if possible:
-                    for i in range(0, len(e)):
+                for i in range(0, len(e)):
 
-                        if i < len(x):
+                    if i < len(x):
 
-                            if x[i] in e[i]:
-                                e[i].remove(x[i])
-                        else:
-                            e[i] = []
+                        if x[i] in e[i]:
+                            e[i].remove(x[i])
+                    else:
+                        e[i] = []
 
         for idx in range(0,len(e)):
+           # FixMe: We can just update state here.
            for z in e[idx]:
                state.logger.info("  Mask Eliminating [n=%d,%s] based on: %s " % (idx+2,str(z),str(y)))
                eliminate += [[idx, z]]
                if z == factorize(idx+2):
+                   # Oops, we eliminated the right value
                    pdb.set_trace()
                    assert False
-        state.logger.debug("  Done analyzing masked Z for y="+str(y))
 
     return eliminate
 
 
 def all_eliminations(state, new_finished):
-    """ Returns factorizations for positions we can show are impossible. """
-    global logger
+    """Eliminates factorizations based on analyzing their z-values.
 
+    Returns lowest n-value affected.
+    """
     mask = ranges_for_z_calculations(state.n, state.all_factorizations, new_finished)
     e_ = analyze_z_for_factorizations_mask(state, mask)
+    min_ = state.n - 2
+    for x in e_:
+        if x[1] in state.all_factorizations[x[0]]:
+            min_ = min(min_,x[0])
+            if [x[1]] not in state.eliminate[x[0]]:
+                state.eliminate[x[0]] += [x[1]]
+
+    return min_
 
     return e_, []
