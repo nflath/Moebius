@@ -12,6 +12,12 @@ def IsLowerThanFinished(state, possible_factorization):
             return True
     return False
 
+def IsOtherLockedForN(state, possible_factorization):
+    """ Is some other factorization locked to this location. """
+
+    return state.n in state.locked_n and \
+      tuple(state.locked_n[state.n]) != tuple(possible_factorization)
+
 def IsLockedElsewhere(state, possible_factorization):
     """Has possible_factorization been locked to a different position.
 

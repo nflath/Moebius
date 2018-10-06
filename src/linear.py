@@ -12,7 +12,6 @@ from util import *
 from filters import *
 from eliminate_z_analysis import all_eliminations
 from eliminate_gt import EliminateBasedOnGt
-from eliminate_locked import EliminateLocked
 from generate_new_factorizations import GenerateNewFactorizations
 
 ENABLE_TESTS = True
@@ -74,8 +73,13 @@ def generate_factorization_possibilities(max_n, state):
         new = [p for p in new if not IsEliminated(state, p)]
         new = [p for p in new if not IsLowerThanFinished(state, p)]
         new = [p for p in new if not IsLockedElsewhere(state, p)]
+        new = [p for p in new if not IsOtherLockedForN(state, p)]
         new = [p for p in new if not SkipsLowerFactorization(state, p)]
         new = [p for p in new if not IsTooHigh(state, new, p)]
+
+        if len(new) == 1:
+            state.locked[tuple(new[0])] = state.n
+            state.locked_n[state.n] = tuple(new[0])
 
         VerifyRealFactorizationGenerated(state, new)
 
@@ -84,7 +88,6 @@ def generate_factorization_possibilities(max_n, state):
         new_finished = state.all_factorizations.update_outstanding_and_finished(new)
 
         lowest = EliminateBasedOnGt(state, new_finished)
-        lowest = min(lowest, EliminateLocked(state))
 
 
 

@@ -193,6 +193,7 @@ class State(object):
         self.n = 2
         self.i = 1
         self.locked = {}
+        self.locked_n = {}
 
     def __eq__(self, other):
         return \
