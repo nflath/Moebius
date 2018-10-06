@@ -76,18 +76,29 @@ def SkipsLowerFactorization(state, possible_factorization):
     return False
 
 def IsTooHigh(state, new_factorizations, possible_factorization):
-   # FixMe: Comment
+    """Is new_factorization greater than too many others."""
+    # Factorizations that are transitively a possible factorization for some 'n'
+    # that new_factorizations is.
+
    lt = []
    gt = []
    equiv = []
+   # return all positions and factorizations 'transitively shared' by
+   # possibe_factorizations (IE, all factorizations that share a 'n' as a
+   # possible factorization, and all factorizations for them, etc.)
+
    p, i = state.all_factorizations.shared(possible_factorization)
    if len(p) == 0:
+       # This is a new factorization; add everything shared for the new n
+       # FixMe: Should we just always do this?
+
        for x in new_factorizations:
            p_, i_ = state.all_factorizations.shared(x)
            p = p.union(p_)
            i = i.union(i_)
            i.add(tuple(x))
 
+   # Populate lt, gt, equiv
    for n in i:
        r = state.all_factorizations.ord_absolute(n, possible_factorization)
        if r == -1:
@@ -96,7 +107,10 @@ def IsTooHigh(state, new_factorizations, possible_factorization):
            gt += [n]
        else:
            equiv += [n]
+
+   # If the number of positions (including the current 'n') transitively shared
+   # is more than the number of factorizations in lt, this could be a possible
+   # factorization for n.
    if len(p)+1 > (len(lt)):
-       # It is possible for a lower value to be present
        return False
    return True

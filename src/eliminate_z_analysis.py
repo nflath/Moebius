@@ -10,38 +10,35 @@ def Z1(n):
     """ Returns the real Z(n)"""
     return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
 
-def in_range(val, min, max):
+def InRange(val, min, max):
+    """ Is val between max and min, inclusive."""
     return val <= max and val >= min
 
 def ZIsPossibleBase(z_min,z_max,m,ZFn):
-    """Return the last possible value of n z and m can occur at."""
+    """Return the last value of n with moebius m and Zfn(n) in range."""
     n = 2
     z_ = 0
     n_max = -1
     while z_ <= z_max:
         m_ = moebius(n)
         z_ = ZFn(n)
-        if in_range(z_,z_min,z_max) and m_ == m:
+        if InRange(z_,z_min,z_max) and m_ == m:
             n_max = n
         n += 1
     return n_max
 
 @memoized
 def ZIsPossible(z_min,z_max, m):
-    """Return the last possible value of n z and m can occur at."""
+    """Return the last value of n with moebius m and Z(n) in range."""
     return ZIsPossibleBase(z_min,z_max,m,Z)
 
 @memoized
 def Z1IsPossible(z_min,z_max, m):
-    """Return the last possible value of n z and m can occur at."""
+    """Return the last value of n with moebius m and Z1(n) in range."""
     return ZIsPossibleBase(z_min,z_max,m,Z1)
 
 def ord(t, o, factorizations):
     """Returns whether this < other for a specific factorization possibility.
-
-    Check each permutation and 2-way split of this and other to try and
-    find one where both parts of this are less than the parts of
-    other.
 
     Returns -1 if t < o, 0 if t == o, 1 if t > o.
     """
@@ -56,7 +53,6 @@ def ord(t, o, factorizations):
 
     t_index = None
     o_index = None
-
 
     if t in factorizations:
         t_index = factorizations.index(t)
@@ -83,20 +79,23 @@ def ord(t, o, factorizations):
     # Neither are found; return unknown
     return 99
 
+# FixMe: Unify calculated_Z and calculated_Z1 somehow.
 def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
     """Calculates Z(f).
 
     For each prime 'p', counts the number of factorizations 'a' where
-    p*p*a <= f .  Returns the total number of cases this is true for."""
+    p*p*a <= f.  Returns the total number of cases this is true for."""
 
     count = 0
     max_idx = 0
     in_ = set()
+
+    # Go through p*p*f in factorizations and add all that match
     for p in primes:
         val = ord([p,p], f, factorizations)
         if val == 99:
             break
-        if val  <= 0:
+        if val <= 0:
             in_.add((p,p))
         else:
             break
@@ -112,9 +111,12 @@ def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
             else:
                 break
 
+    # Now, we need to handle the cases that are past the point we stopped
+    # generating every possibility.
     pos = set()
     in_y = set()
     in_both = set()
+    # FixMe: Is this fully correct?  Why only reverse_idx
     for idx in all_factorizations.reverse_idx[tuple(f)]:
         if idx == y_idx:
             if tuple(f) not in in_ and len(set(f)) != len(f):
@@ -128,7 +130,6 @@ def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
                     in_y.add(tuple(z))
                 else:
                     in_both.add(tuple(z))
-
 
     return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
       len(in_) + min(len(pos),len(in_y))
@@ -184,12 +185,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
     """Calculates the range in all_factorization that each factorization is concerned with.
 
     This is an optimization, so we don't have to run through every full
-    factorization for every Z.  The max_idx for a factorization will be
-    the maximum index in all_factorization we need to show that [p*p]*a
-    > factorization for all p.  Th min_idx is the lowest index that we
-    are unsure whether p*p*a > factorization.  We are only really
-    interested in cases where we can always calculate Z, but will
-    sometimes get different results.
+    factorization for every Z.
     """
 
     possible_primes = []
@@ -198,7 +194,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             if len(y) == 1:
                 possible_primes += y
 
-    # Don't analyze for primes that are potentially not prime.
+    # Don't analyze for positions that are potentially not prime.
     new_it_set = set()
     for y in it_set:
         valid = True
@@ -212,22 +208,18 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
     mask = {}
 
     for y in new_it_set:
-        d = set()
-        d.add(y)
-
+        # Mask[y] will be set to True for each index we care about
         mask[y] = [False] * len(all_factorizations)
 
         for p in possible_primes:
-            # For each prime, try to find some index x_idx s.t
-            # [p,p]*all_factorizations[x_idx] > y.  Keep track of the maximum
-            # of these.
-            found_upper_bound = False
 
             for x_idx in range(0, len(all_factorizations)):
 
                 for z in all_factorizations[x_idx]:
                     t, o = simplify(z, y)
                     if not t:
+                        # y is a multiple of z; we're interested in this
+                        # FixMe: Why?
                         mask[y][x_idx] = True
                     tup = (sorted([p,p] + z), sorted([p]+z))
                     for v in tup:
@@ -235,36 +227,40 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         val = all_factorizations.ord_absolute(v,y)
 
                         if tuple(v) == y:
-                            #pdb.set_trace()
+                            # FixMe: Why?
                             mask[y][x_idx] = True
                         if tuple(v) not in all_factorizations.outstanding and \
                           tuple(v) not in all_factorizations.finished:
+                            # We haven't generated v yet at all, can't do anything here
                             continue
 
                         if val == 99:
-                            #if x_idx == 53: pdb.set_trace()
                             t, o = simplify(v, y)
 
-                            #for idx in all_factorizations.reverse_idx[tuple(v)]:
-                                #if idx == 53: pdb.set_trace()
-                                #mask[y][idx] = True
-
+                            # We don't know p*p*z <> y; cancle out common factors and
+                            # for the remainder iterate through all possibilities
+                            # FixMe: Explain why we care about these
                             if tuple(o) != y:
                                 for idx in all_factorizations.reverse_idx[tuple(t)]:
-                                    #if idx == 53: pdb.set_trace()
                                     mask[y][idx] = True
                                 for idx in all_factorizations.reverse_idx[tuple(o)]:
-                                    #if idx == 53: pdb.set_trace()
                                     mask[y][idx] = True
-        # End for x_idx in range(0, len(all_factorizations)):
-        #pdb.set_trace()
+                    # End for v in tup
+                # End for z in all_factorizations[x_idx]:
+            # End for x_idx in range(0, len(all_factorizations)):
+        # End for p in possible_primes:
+
+        # For every factorization where mask[y][x]==True, set everywhere it could be to true
+        # FixMe: Use shared here
+
         for x in range(0, len(mask[y])):
             if mask[y][x]:
-                    for z in all_factorizations[x]:
-                        for zp in z:
-                            if len(all_factorizations.reverse_idx[(zp,)]) > 1:
-                                mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
+                for z in all_factorizations[x]:
+                    for zp in z:
+                        if len(all_factorizations.reverse_idx[(zp,)]) > 1:
+                            mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
 
+        # Same thing, basically.
         for x in range(0,2):
             present = set()
             for x_idx in range(0, len(all_factorizations)):
@@ -278,6 +274,9 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         if tuple(z) in present:
                             mask[y][x_idx] = True
 
+        # mask[y][y_idx] and everything shared should always be false.
+        # FixMe: Explain why
+        # FixMe: Use shared
         present = set()
         for y_idx in all_factorizations.reverse_idx[y]:
             mask[y][y_idx] = False
@@ -290,7 +289,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                     mask[y][x_idx] = False;
     return mask
 
-def analyze_z_for_factorizations_mask(state, new_finished, mask):
+def analyze_z_for_factorizations_mask(state, mask):
     n = state.n
     all_factorizations = state.all_factorizations
     eliminate = []
@@ -340,14 +339,14 @@ def analyze_z_for_factorizations_mask(state, new_finished, mask):
                 possible = True
                 if (z_is_possible < (y_idx+2)):
                     continue
-                if (not in_range(Z(y_idx+2),possible_z_min,possible_z_max)):
+                if (not InRange(Z(y_idx+2),possible_z_min,possible_z_max)):
                     continue
 
                 possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
                 z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
                 if (z1_is_possible < (y_idx+2)):
                     continue
-                if (not in_range(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
+                if (not InRange(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
                     continue
 
 
@@ -378,6 +377,6 @@ def all_eliminations(state, new_finished):
     global logger
 
     mask = ranges_for_z_calculations(state.n, state.all_factorizations, new_finished)
-    e_ = analyze_z_for_factorizations_mask(state, new_finished, mask)
+    e_ = analyze_z_for_factorizations_mask(state, mask)
 
     return e_, []
