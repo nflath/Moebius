@@ -162,6 +162,7 @@ def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx):
             else:
                 break
 
+
     pos = set()
     in_y = set()
     in_both = set()
