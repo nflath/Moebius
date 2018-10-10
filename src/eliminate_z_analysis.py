@@ -1,4 +1,6 @@
 from util import *
+from functools import reduce
+
 
 @memoized
 def Z(n):
@@ -287,6 +289,11 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             for z in all_factorizations[x_idx]:
                 if tuple(z) in present:
                     mask[y][x_idx] = False;
+
+        # For clarity, if there is only one option don't have the mask set to true
+        for x_idx in range(0,len(all_factorizations)):
+            if len(all_factorizations[x_idx]) == 1:
+                mask[y][x_idx] = False;
     return mask
 
 def analyze_z_for_factorizations_mask(state, mask):
@@ -333,7 +340,6 @@ def analyze_z_for_factorizations_mask(state, mask):
                     moebius_of_y = int(math.pow(-1,len(y)))
 
                 possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
-
                 z_is_possible = ZIsPossible(possible_z_min,possible_z_max,moebius_of_y)
 
                 if (z_is_possible < (y_idx+2)):
@@ -343,6 +349,7 @@ def analyze_z_for_factorizations_mask(state, mask):
 
                 possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
                 z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
+
                 if (z1_is_possible < (y_idx+2)):
                     continue
                 if (not InRange(Z1(y_idx+2),possible_z1_min,possible_z1_max)):

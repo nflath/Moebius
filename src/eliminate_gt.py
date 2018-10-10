@@ -14,7 +14,6 @@ def EliminateBasedOnGt(state, new_finished):
                 # o * a = z
                 t, o = simplify(f, z)
 
-
                 # Don't deal with possible primes
                 if len(t) == 1 and len(state.all_factorizations[state.all_factorizations.reverse_idx[tuple(t)][0]]) > 1:
                     continue
@@ -49,8 +48,11 @@ def EliminateBasedOnGt(state, new_finished):
                     # f = z * t
                     if tuple(z) != f and tuple(t) != f and not o:
                         for z2 in state.all_factorizations[x]:
-                            # z and z2 were both generated as possibilities for n=x, so we don't know z < z2.
-                            # Check if there we know z * t < z2 * t for some t or vice versa.
+                            # z and z2 were both generated as possibilities for
+                            # n=x, so we don't know z < z2.
+
+                            # Check if there we know z * t < z2 * t for some t
+                            # or vice versa.
                             if state.all_factorizations.ord(list(f), sorted(z2+t)) == 1 and \
                                 state.all_factorizations.ord(z, z2) == 99 and len(z2) != 1 and len(z) != 1:
                                 state.logger.info(" %s < %s " % (str(z2),str(z)))

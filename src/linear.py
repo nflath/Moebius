@@ -21,7 +21,6 @@ ENABLE_TESTS = False
 # FixMe: Use sets where appropriate
 # FixMe: Have a real command-line parser
 
-
 def CreateLogger():
     """Set up the global logger to be used by this module."""
     logger = logging.getLogger('Moebius')
