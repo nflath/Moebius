@@ -16,19 +16,25 @@ from functools import reduce
 #    If there is some f(n'')=y' pair that was never in a valid f, we can eliminate
 #    y' as a possibility for n''.
 
-# Complexities are in:
+# Complexities beyond this simple description:
 
-# Calculation of Z/Z1(y, f)
+# Calculation of Z/Z1(y, f):
+# TODO
+
+# Selection of n->all possible factorizations to use:
+# TODO
+
+
 
 @memoized
 def Z(n):
     """ Returns the real Z(n)"""
-    return len([moebius(x) for x in range(1,n+1) if moebius(x) == 0])
+    return len([x for x in range(1,n+1) if moebius(x) == 0])
 
 @memoized
 def Z1(n):
     """ Returns the real Z(n)"""
-    return len([moebius(x) for x in range(2,n+1) if moebius(x) == 1])
+    return len([x for x in range(2,n+1) if moebius(x) == 1])
 
 def InRange(val, min, max):
     """ Is val between max and min, inclusive."""
@@ -100,7 +106,7 @@ def ord(t, o, factorizations):
     return 99
 
 # FixMe: Unify calculated_Z and calculated_Z1 somehow.
-def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
+def calculated_Z(f, primes, factorizations, all_factorizations, y_idx, real):
     """Calculates Z(f).
 
     For each prime 'p', counts the number of factorizations 'a' where
@@ -123,14 +129,11 @@ def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
             x = factorizations[x_idx]
             possibility = sorted([p,p]+x)
             val = ord(possibility, f, factorizations)
-            if val == 99:
-                break
             if val <= 0:
                 max_idx = max(max_idx, x_idx)
                 in_.add(tuple(possibility))
             else:
                 break
-
     # Now, we need to handle the cases that are past the point we stopped
     # generating every possibility.
     pos = set()
@@ -151,10 +154,10 @@ def calculated_Z(f, primes, factorizations, all_factorizations, y_idx):
                 else:
                     in_both.add(tuple(z))
 
-    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
-      len(in_) + min(len(pos),len(in_y))
+    return len(in_), len(in_)# + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
+      #len(in_) + min(len(pos),len(in_y))
 
-def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx):
+def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx, real):
     """Calculates Z1(f).
 
     For each prime 'p', counts the number of factorizations 'a' where
@@ -179,7 +182,9 @@ def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx):
                 in_.add(tuple(possibility))
             else:
                 break
-
+    #if real:
+        #pdb.set_trace()
+# Real on also has 5 * 11
 
     pos = set()
     in_y = set()
@@ -199,8 +204,8 @@ def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx):
                     in_both.add(tuple(z))
 
 
-    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
-      len(in_) + min(len(pos),len(in_y))
+    return len(in_), len(in_)# + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
+      #len(in_) + min(len(pos),len(in_y))
 
 def ranges_for_z_calculations(n, all_factorizations, it_set):
     """Calculates the range in all_factorization that each factorization is concerned with.
@@ -358,7 +363,14 @@ def analyze_z_for_factorizations_mask(state, mask):
                 if len(set(y)) == len(y):
                     moebius_of_y = int(math.pow(-1,len(y)))
 
-                possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
+                real = True
+                if reduce(lambda x,y: x * y, y) != y_idx+2:
+                    real = False
+                for a in range(0,len(mask[y])):
+                    if mask[y][a] and x[a] != factorize(a+2):
+                        real = False
+
+                possible_z_min, possible_z_max = calculated_Z(list(y), primes, x[:y_start_idx+1], all_factorizations, y_idx, real)
                 z_is_possible = ZIsPossible(possible_z_min,possible_z_max,moebius_of_y)
 
                 if (z_is_possible < (y_idx+2)):
@@ -366,7 +378,7 @@ def analyze_z_for_factorizations_mask(state, mask):
                 if (not InRange(Z(y_idx+2),possible_z_min,possible_z_max)):
                     continue
 
-                possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx], all_factorizations, y_idx)
+                possible_z1_min, possible_z1_max = calculated_Z1(list(y), primes, x[:y_start_idx+1], all_factorizations, y_idx, real)
                 z1_is_possible = Z1IsPossible(possible_z1_min,possible_z1_max,moebius_of_y)
 
                 if (z1_is_possible < (y_idx+2)):
