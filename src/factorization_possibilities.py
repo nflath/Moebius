@@ -119,6 +119,8 @@ class FactorizationPossibilities(object):
             # If there is only one new item, it is finished.
             #FixMe: Is this necessary or does one of the above checks always hit it?
             new_finished.add(tuple(new[0]))
+            if tuple(new[0]) in outstanding:
+                outstanding.remove(tuple(new[0]))
         else:
             for x in new:
                 if tuple(x) not in outstanding and \

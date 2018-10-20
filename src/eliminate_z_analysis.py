@@ -1,6 +1,24 @@
 from util import *
 from functools import reduce
 
+# Here is the most complicated piece of analysis in the program; definitely
+# need to make sure it's corect, and right now it isn't (due to optimizations).
+
+# Basic idea:
+# Save the current mapping of n->all possible factorizations for n in 'e'
+# For each possible fullset of n->factorization possibilities 'f'
+#     For each newly finished factorization 'y'
+#         1.  Calculate Z(y) and Z1(y) based on 'f'.
+#         2.  Check if there any n' for which moebius(n') matches moebius(n)
+#             and Z(n') == Z(y,f) (and Z1(n') == Z1(y,f)
+#         3.  If there is, f is potentially valid.  if f[n''] = y', then
+#             we can't eliminate y' as a factorization for n''
+#    If there is some f(n'')=y' pair that was never in a valid f, we can eliminate
+#    y' as a possibility for n''.
+
+# Complexities are in:
+
+# Calculation of Z/Z1(y, f)
 
 @memoized
 def Z(n):
