@@ -18,12 +18,35 @@ from functools import reduce
 
 # Complexities beyond this simple description:
 
-# Calculation of Z/Z1(y, f):
-# TODO
-
 # Selection of n->all possible factorizations to use:
-# TODO
+#
+# For each 'y', we need to identify the values of n where choosing different
+# factorizations could affect the value of either Z or Z1.  This is
+# accomplished in the ranges_for_z_calculations function.  Indexes we are care
+# about are:
+#   1.  factorizations that are a subset of 'y'
+#   2.  For each p, if p*p*z < y or p*z < y is unknown, then take the non-common factors
+#   t, o.  Each 'n' where t or o can occur is an index we are interested in.
+#   3.  Each 'n' that may be prime is interesting
+#   4.  Factorizations that aare transitively share a location with a
+#   factorization meeting the above criteria.
+#
+#   After we determine, these, all values of 'n' that contain 'y' as a
+#   possibility are marked as non-interesting; instead, we will fix 'y' to each
+#   location (as we don't care about the ordering of everything before y, but
+#   merely where y is located in it's possibilities.
 
+# Calculation of Z/Z1(y, f):
+#
+# We now here have a set of factorizations [2->[2], 3->[3], .... [y_idx]=y] f
+# and we want to find the possible values of Z(y) assuming the factorization f
+# is correct.
+#
+# There are a few complexities: transitively shared factorizations with y,
+# outstanding factorizations, and ... .
+# Note: Can we just get rid of outstanding factorizations by waiting longer?
+#
+# TODO
 
 
 @memoized
@@ -154,8 +177,8 @@ def calculated_Z(f, primes, factorizations, all_factorizations, y_idx, real):
                 else:
                     in_both.add(tuple(z))
 
-    return len(in_), len(in_)# + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
-      #len(in_) + min(len(pos),len(in_y))
+    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
+      len(in_) + min(len(pos),len(in_y))
 
 def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx, real):
     """Calculates Z1(f).
@@ -204,8 +227,8 @@ def calculated_Z1(f, primes, factorizations, all_factorizations, y_idx, real):
                     in_both.add(tuple(z))
 
 
-    return len(in_), len(in_)# + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
-      #len(in_) + min(len(pos),len(in_y))
+    return len(in_) + min(len(pos),len(in_y))-min(len(pos),len(in_both)), \
+      len(in_) + min(len(pos),len(in_y))
 
 def ranges_for_z_calculations(n, all_factorizations, it_set):
     """Calculates the range in all_factorization that each factorization is concerned with.
@@ -220,7 +243,7 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             if len(y) == 1:
                 possible_primes += y
 
-    # Don't analyze for positions that are potentially not prime.
+    # Don't analyze for positions that are multiples of potential nonprimes.
     new_it_set = set()
     for y in it_set:
         valid = True
@@ -236,11 +259,8 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
     for y in new_it_set:
         # Mask[y] will be set to True for each index we care about
         mask[y] = [False] * len(all_factorizations)
-
         for p in possible_primes:
-
             for x_idx in range(0, len(all_factorizations)):
-
                 for z in all_factorizations[x_idx]:
                     t, o = simplify(z, y)
                     if not t:
@@ -276,8 +296,6 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
             # End for x_idx in range(0, len(all_factorizations)):
         # End for p in possible_primes:
 
-        # For every factorization where mask[y][x]==True, set everywhere it could be to true
-        # FixMe: Use shared here
 
         for x in range(0, len(mask[y])):
             if mask[y][x]:
@@ -286,7 +304,8 @@ def ranges_for_z_calculations(n, all_factorizations, it_set):
                         if len(all_factorizations.reverse_idx[(zp,)]) > 1:
                             mask[y][all_factorizations.reverse_idx[(zp,)][0]] = True
 
-        # Same thing, basically.
+        # For every factorization where mask[y][x]==True, set everywhere it could be to true
+        # FixMe: Use shared here
         for x in range(0,2):
             present = set()
             for x_idx in range(0, len(all_factorizations)):
