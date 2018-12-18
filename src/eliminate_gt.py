@@ -8,6 +8,7 @@ def EliminateBasedOnGt(state, new_finished):
     """
     lowest = state.n - 2
     for f in new_finished:
+        continue
         for x in range(0, len(state.all_factorizations)):
             for z in state.all_factorizations[x]:
                 # t * a = f

@@ -405,11 +405,8 @@ def analyze_z_for_factorizations_mask(state, mask):
                 if (not InRange(Z1(y_idx+2),possible_z1_min,possible_z1_max)):
                     continue
 
-
                 for i in range(0, len(e)):
-
                     if i < len(x):
-
                         if x[i] in e[i]:
                             e[i].remove(x[i])
                     else:
